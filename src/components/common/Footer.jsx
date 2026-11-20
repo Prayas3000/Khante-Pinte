@@ -36,21 +36,33 @@ export function Footer({ brandLogo, storeHours }) {
         <p>
           <Clock3 size={14} /> {formatTime12(storeHours.open_time)} – {formatTime12(storeHours.close_time)} (NPT)
         </p>
-        <a href="tel:9849073408">
-          <Phone size={14} /> 9849073408
-        </a>
-        <a href="https://wa.me/9849073408" target="_blank" rel="noreferrer">
-          WhatsApp 9849073408 (Primary)
-        </a>
-        <a href="https://wa.me/9822551213" target="_blank" rel="noreferrer">
-          WhatsApp 9822551213
-        </a>
-        <a href="https://wa.me/9764463286" target="_blank" rel="noreferrer">
-          WhatsApp 9764463286
-        </a>
-        <a href="https://wa.me/9709027043" target="_blank" rel="noreferrer">
-          WhatsApp 9709027043
-        </a>
+        
+        <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
+          <div style={{ fontSize: 13 }}>
+            <span style={{ fontWeight: 600, color: 'var(--text-primary, #182230)' }}>Primary: </span>
+            <a href="tel:9849073408" style={{ textDecoration: 'underline' }}>9849073408</a>
+            {' · '}
+            <a href="https://wa.me/9779849073408" target="_blank" rel="noreferrer" style={{ color: '#16a34a', fontWeight: 600 }}>WhatsApp</a>
+          </div>
+          <div style={{ fontSize: 13 }}>
+            <span style={{ fontWeight: 600, color: 'var(--text-primary, #182230)' }}>Alt 1: </span>
+            <a href="tel:9822551213" style={{ textDecoration: 'underline' }}>9822551213</a>
+            {' · '}
+            <a href="https://wa.me/9779822551213" target="_blank" rel="noreferrer" style={{ color: '#16a34a', fontWeight: 600 }}>WhatsApp</a>
+          </div>
+          <div style={{ fontSize: 13 }}>
+            <span style={{ fontWeight: 600, color: 'var(--text-primary, #182230)' }}>Alt 2: </span>
+            <a href="tel:9764463286" style={{ textDecoration: 'underline' }}>9764463286</a>
+            {' · '}
+            <a href="https://wa.me/9779764463286" target="_blank" rel="noreferrer" style={{ color: '#16a34a', fontWeight: 600 }}>WhatsApp</a>
+          </div>
+          <div style={{ fontSize: 13 }}>
+            <span style={{ fontWeight: 600, color: 'var(--text-primary, #182230)' }}>Alt 3: </span>
+            <a href="tel:9709027043" style={{ textDecoration: 'underline' }}>9709027043</a>
+            {' · '}
+            <a href="https://wa.me/9779709027043" target="_blank" rel="noreferrer" style={{ color: '#16a34a', fontWeight: 600 }}>WhatsApp</a>
+          </div>
+        </div>
       </div>
       <div className="footer-column">
         <strong>FOLLOW OUR FOOD JOURNEY</strong>

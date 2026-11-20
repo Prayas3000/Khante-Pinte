@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Plus, Minus, ChevronRight } from 'lucide-react';
 import { currency } from '@/utils/formatters';
+import { ReceiptModal } from '@/components/admin/ReceiptModal';
 
 export function POS({ products, newOrder, riders, paymentMethods, deliveryFee }) {
   const [cart, setCart] = useState([]);
@@ -13,6 +14,8 @@ export function POS({ products, newOrder, riders, paymentMethods, deliveryFee })
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [paymentStatus, setPaymentStatus] = useState('unpaid');
   const [search, setSearch] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [createdOrder, setCreatedOrder] = useState(null);
 
   const available = products.filter(
     p => !p.outOfStock && p.name.toLowerCase().includes(search.toLowerCase())
@@ -186,26 +189,46 @@ export function POS({ products, newOrder, riders, paymentMethods, deliveryFee })
         </div>
         <button
           className="btn-primary full"
-          disabled={!cart.length}
+          disabled={!cart.length || submitting}
           onClick={async () => {
+            setSubmitting(true);
             try {
-              await newOrder(
-                {
-                  customer: customer || 'Phone customer',
-                  phone,
-                  address,
-                  type,
-                  items: cart,
-                  subtotal,
-                  discount: Number(manualDiscount),
-                  delivery: type === 'Delivery' ? deliveryFee : 0,
-                  total,
-                  paymentMethod,
-                  paymentStatus,
-                  rider
-                },
-                'Phone'
-              );
+              const orderPayload = {
+                customer: customer || 'Phone customer',
+                phone,
+                address,
+                type,
+                items: cart,
+                subtotal,
+                discount: Number(manualDiscount),
+                delivery: type === 'Delivery' ? deliveryFee : 0,
+                total,
+                paymentMethod,
+                paymentStatus,
+                rider
+              };
+              const saved = await newOrder(orderPayload, 'Phone');
+              
+              if (saved) {
+                setCreatedOrder({
+                  id: `KP-${saved.order_number}`,
+                  createdAt: new Date().toISOString(),
+                  source: 'Phone/POS',
+                  customer: orderPayload.customer,
+                  phone: orderPayload.phone,
+                  address: orderPayload.address,
+                  type: orderPayload.type,
+                  items: orderPayload.items,
+                  subtotal: orderPayload.subtotal,
+                  discount: orderPayload.discount,
+                  delivery: orderPayload.delivery,
+                  total: orderPayload.total,
+                  payment: orderPayload.paymentMethod,
+                  paymentStatus: orderPayload.paymentStatus,
+                  rider: orderPayload.rider
+                });
+              }
+
               setCart([]);
               setCustomer('');
               setPhone('');
@@ -214,12 +237,23 @@ export function POS({ products, newOrder, riders, paymentMethods, deliveryFee })
               setRider('');
               setPaymentMethod('cash');
               setPaymentStatus('unpaid');
-            } catch {}
+            } catch (err) {
+              console.error('POS order submission error:', err);
+            } finally {
+              setSubmitting(false);
+            }
           }}
         >
-          Create order <ChevronRight />
+          {submitting ? 'Creating order...' : 'Create order'} <ChevronRight />
         </button>
       </section>
+
+      {createdOrder && (
+        <ReceiptModal
+          order={createdOrder}
+          onClose={() => setCreatedOrder(null)}
+        />
+      )}
     </div>
   );
 }

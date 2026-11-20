@@ -23,6 +23,7 @@ import {
   businessDate,
   formatDbOrder
 } from '@/utils/formatters';
+import { playNewOrderChime } from '@/utils/audioChime';
 
 // Common Components
 import { Header } from '@/components/common/Header';
@@ -502,6 +503,7 @@ function App() {
         const row = payload.new || {};
         const oldRow = payload.old || {};
         if (payload.eventType === 'INSERT') {
+          playNewOrderChime();
           const item = {
             id: `${row.id || Date.now()}-new`,
             title: `New order KP-${row.order_number || ''}`,
@@ -1066,7 +1068,7 @@ function App() {
                     style={{ background: storeOpen ? '#16a34a' : '#dc2626' }}
                   />{' '}
                   {storeOpen ? 'WE ARE OPEN' : 'CURRENTLY CLOSED'} ·{' '}
-                  {formatTime12(storeHours.open_time)} — {formatTime12(storeHours.close_time)}
+                  {formatTime12(storeHours.open_time)} — {formatTime12(storeHours.close_time)} (NPT)
                 </div>
                 <h1>
                   Late night.
@@ -1074,24 +1076,24 @@ function App() {
                   <em>Great bites.</em>
                 </h1>
                 <p>
-                  When hunger doesn't sleep, neither do we. Fresh food, bold flavours, delivered to
-                  your door in Biratnagar.
+                  When hunger doesn't sleep, neither do we. Fresh food, bold flavours, delivered across
+                  Biratnagar from Buspark.
                 </p>
                 <div className="hero-cta">
                   <a className="btn-primary" href="#menu">
                     Explore menu <ChevronRight />
                   </a>
                   <span>
-                    <Clock3 size={16} /> Night delivery
+                    <Clock3 size={16} /> Night delivery (9 PM – 4 AM)
                   </span>
                 </div>
                 <div className="hero-meta">
-                  <span>
-                    <MapPin size={15} /> Biratnagar
-                  </span>
-                  <span>
+                  <a href="#contact" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'inherit' }}>
+                    <MapPin size={15} /> Buspark, Biratnagar, Nepal
+                  </a>
+                  <a href="tel:9849073408" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'inherit' }}>
                     <Phone size={15} /> 9849073408
-                  </span>
+                  </a>
                 </div>
               </div>
               <div className="hero-art">
@@ -1122,7 +1124,7 @@ function App() {
                 <span>
                   <strong>Night service</strong>
                   <small>
-                    {formatTime12(storeHours.open_time)} – {formatTime12(storeHours.close_time)}
+                    {formatTime12(storeHours.open_time)} – {formatTime12(storeHours.close_time)} (NPT)
                   </small>
                 </span>
               </div>
@@ -1130,21 +1132,23 @@ function App() {
                 <Bike />
                 <span>
                   <strong>Delivery</strong>
-                  <small>Biratnagar</small>
+                  <small>Buspark & Biratnagar</small>
                 </span>
               </div>
               <div>
                 <Wallet />
                 <span>
                   <strong>Easy payment</strong>
-                  <small>Cash on delivery</small>
+                  <small>COD / Fonepay QR</small>
                 </span>
               </div>
               <div>
                 <Phone />
                 <span>
                   <strong>Call to order</strong>
-                  <small>9849073408</small>
+                  <small>
+                    <a href="tel:9849073408" style={{ color: 'inherit' }}>9849073408</a>
+                  </small>
                 </span>
               </div>
             </section>

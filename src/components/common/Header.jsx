@@ -1,5 +1,5 @@
 import React from 'react';
-import { LogIn, ShoppingBag, Menu as MenuIcon } from 'lucide-react';
+import { LogIn, ShoppingBag, Menu as MenuIcon, Instagram, Facebook } from 'lucide-react';
 
 export function Header({
   brandLogo,
@@ -31,6 +31,26 @@ export function Header({
           <a href="#menu">Menu</a>
           <a href="#about">About</a>
           <a href="#contact">Contact</a>
+          <div className="nav-social-links" style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 8 }}>
+            <a
+              href="https://www.instagram.com/khantepinte.biratnagar?utm_source=ig_web_button_share_sheet&dmpr=ZDNlZDc0MzIxNw=="
+              target="_blank"
+              rel="noreferrer"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: '#e7a2b2' }}
+              title="Instagram"
+            >
+              <Instagram size={16} aria-hidden="true" />
+            </a>
+            <a
+              href="https://www.facebook.com/KhantePinte.biratnagar/"
+              target="_blank"
+              rel="noreferrer"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: '#8eb7f2' }}
+              title="Facebook"
+            >
+              <Facebook size={16} aria-hidden="true" />
+            </a>
+          </div>
         </nav>
         <div className="header-actions">
           {customerAccount ? (
@@ -89,6 +109,24 @@ export function Header({
           <a href="#contact" onClick={() => setMenuOpen(false)}>
             Contact
           </a>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center', paddingTop: 6, borderTop: '1px solid #eee' }}>
+            <a
+              href="https://www.instagram.com/khantepinte.biratnagar?utm_source=ig_web_button_share_sheet&dmpr=ZDNlZDc0MzIxNw=="
+              target="_blank"
+              rel="noreferrer"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#b9516e', fontWeight: 600 }}
+            >
+              <Instagram size={16} /> Instagram
+            </a>
+            <a
+              href="https://www.facebook.com/KhantePinte.biratnagar/"
+              target="_blank"
+              rel="noreferrer"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#3b69b5', fontWeight: 600 }}
+            >
+              <Facebook size={16} /> Facebook
+            </a>
+          </div>
         </div>
       )}
     </>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Bell,
   LayoutDashboard,
@@ -10,9 +10,12 @@ import {
   Tag,
   TrendingUp,
   Settings2,
-  RefreshCw
+  RefreshCw,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import { currency } from '@/utils/formatters';
+import { isSoundEnabled, setSoundEnabled, playNewOrderChime } from '@/utils/audioChime';
 import { Dashboard } from '@/components/admin/Dashboard';
 import { Orders } from '@/components/admin/Orders';
 import { CancelledOrders } from '@/components/admin/CancelledOrders';
@@ -77,6 +80,17 @@ export function AdminShell({
   brandLogo,
   setBrandLogo
 }) {
+  const [soundActive, setSoundActive] = useState(() => isSoundEnabled());
+
+  const handleToggleSound = () => {
+    const next = !soundActive;
+    setSoundActive(next);
+    setSoundEnabled(next);
+    if (next) {
+      playNewOrderChime();
+    }
+  };
+
   return (
     <div className="admin-layout">
       <aside className="admin-sidebar">
@@ -118,6 +132,18 @@ export function AdminShell({
             <h1>{section}</h1>
           </div>
           <div className="topbar-right">
+            <button
+              className="icon-btn"
+              title={soundActive ? 'Order audio chime enabled (Click to mute)' : 'Order audio chime muted (Click to enable)'}
+              aria-label="Toggle Order Alert Sound"
+              onClick={handleToggleSound}
+              style={{
+                color: soundActive ? '#16a34a' : '#98a2b3',
+                borderColor: soundActive ? '#bbf7d0' : '#e4e7ec'
+              }}
+            >
+              {soundActive ? <Volume2 size={18} /> : <VolumeX size={18} />}
+            </button>
             <span className="shift-chip">
               <span className="dot-live" /> Night shift
             </span>

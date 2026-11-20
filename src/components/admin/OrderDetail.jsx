@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { MapPin } from 'lucide-react';
+import { MapPin, Printer } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { currency } from '@/utils/formatters';
 import { StatusBadge } from '@/components/common/StatusBadge';
+import { ReceiptModal } from '@/components/admin/ReceiptModal';
 
 export function OrderDetail({
   order: o,
@@ -14,6 +15,7 @@ export function OrderDetail({
 }) {
   const [proofUrl, setProofUrl] = useState('');
   const [proofLoading, setProofLoading] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
 
   const openProof = async () => {
     if (!o.paymentProofPath) return;
@@ -109,6 +111,15 @@ export function OrderDetail({
           <option value="unpaid">Payment: Unpaid</option>
           <option value="paid">Payment: Paid</option>
         </select>
+        <button
+          type="button"
+          className="btn-outline"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          onClick={() => setReceiptOpen(true)}
+          title="Print Customer Receipt or Kitchen Order Ticket (KOT)"
+        >
+          <Printer size={14} /> Print Receipt / KOT
+        </button>
         {o.paymentProofPath && (
           <>
             <button
@@ -144,6 +155,13 @@ export function OrderDetail({
             </button>
           )}
       </div>
+
+      {receiptOpen && (
+        <ReceiptModal
+          order={o}
+          onClose={() => setReceiptOpen(false)}
+        />
+      )}
     </div>
   );
 }

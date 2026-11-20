@@ -403,3 +403,46 @@
   .product-detail-info { padding: 18px 18px 20px !important; }
   .product-reviews { padding: 20px 18px 24px !important; }
 }
+
+/* Thermal POS / KOT Print Styles (58mm / 80mm) */
+@media print {
+  @page {
+    margin: 0;
+    size: 80mm auto;
+  }
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 12px !important;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .kp-thermal-receipt, .kp-thermal-receipt * {
+    visibility: visible !important;
+  }
+  .kp-thermal-receipt {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 78mm !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 6mm !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #fff !important;
+    color: #000 !important;
+    font-family: 'Courier New', Courier, monospace !important;
+  }
+  .no-print,
+  .site-header,
+  .footer,
+  .admin-sidebar,
+  .admin-topbar,
+  .modal-backdrop:not(:has(.kp-thermal-receipt)) {
+    display: none !important;
+  }
+}
