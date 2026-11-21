@@ -577,7 +577,7 @@ function App() {
       const { data, error } = await supabase
         .from('orders')
         .select(
-          'id, order_number, customer_name, customer_phone, delivery_address, order_type, order_source, status, subtotal, discount, delivery_fee, total, notes, tracking_token, business_date, created_at, payment_method, payment_status, payment_proof_path, cancellation_reason, rider_id, order_items(id, menu_item_id, item_name, quantity, unit_price, line_total), order_status_history(id, status, changed_at), rider:riders(id,name,phone)'
+          'id, order_number, order_code, customer_name, customer_phone, delivery_address, order_type, order_source, status, subtotal, discount, delivery_fee, total, notes, tracking_token, business_date, created_at, payment_method, payment_status, payment_proof_path, cancellation_reason, rider_id, order_items(id, menu_item_id, item_name, quantity, unit_price, line_total), order_status_history(id, status, changed_at), rider:riders(id,name,phone)'
         )
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -771,7 +771,7 @@ function App() {
       const { data: saved, error } = await supabase
         .from('orders')
         .insert(payload)
-        .select('id, order_number')
+        .select('id, order_number, order_code')
         .single();
       if (error) throw error;
 
@@ -788,7 +788,8 @@ function App() {
         if (itemError) throw itemError;
       }
       await loadOrders(false);
-      setNotice(`Order KP-${saved.order_number} created successfully.`);
+      const code = saved.order_code || `KP-${saved.order_number}`;
+      setNotice(`Order ${code} created successfully.`);
       return saved;
     } catch (error) {
       console.error('POS order creation failed:', error);
@@ -883,8 +884,10 @@ function App() {
         throw new Error('Order could not be created.');
       }
 
+      const displayOrderId = data.order_code || `KP-${data.order_number}`;
       const order = {
-        id: `KP-${data.order_number}`,
+        id: displayOrderId,
+        orderCode: data.order_code,
         dbId: data.order_id,
         trackingToken: data.tracking_token,
         seq: Number(data.order_number),
@@ -921,13 +924,32 @@ function App() {
       setVoucherInput('');
       setCheckoutOpen(false);
 
-      setLastOrderId(order.id);
-      saveStore('kp_last_order_id', order.id);
-      setTrackingOrderId(order.id);
+      setLastOrderId(displayOrderId);
+      saveStore('kp_last_order_id', displayOrderId);
+
+      // Save to guest recent orders in localStorage for 6 hours
+      try {
+        const guestRecent = JSON.parse(localStorage.getItem('kp_guest_recent_orders') || '[]');
+        const newEntry = {
+          orderCode: displayOrderId,
+          orderNumber: data.order_number,
+          phone: form.phone.trim(),
+          customer: form.name.trim(),
+          total: Number(data.total),
+          placedAt: Date.now(),
+          expiresAt: Date.now() + 6 * 3600 * 1000 // 6 hours
+        };
+        const updatedRecent = [newEntry, ...guestRecent.filter(o => o.orderCode !== displayOrderId)].slice(0, 5);
+        localStorage.setItem('kp_guest_recent_orders', JSON.stringify(updatedRecent));
+      } catch (e) {
+        console.warn('Could not store guest order in localStorage:', e);
+      }
+
+      setTrackingOrderId(displayOrderId);
       setTrackingPhone(customerAccount?.userId ? '' : form.phone);
       setTrackingOpen(true);
 
-      setNotice(`Order ${order.id} placed successfully!`);
+      setNotice(`Order ${displayOrderId} placed successfully!`);
     } catch (error) {
       console.error('Order submission failed:', error);
       setNotice(`Order failed: ${error.message}`);
@@ -1860,6 +1882,12 @@ function App() {
               onUpdated={updates =>
                 setCustomerAccount(current => ({ ...current, ...updates }))
               }
+              onTrackOrder={orderId => {
+                setAccountOpen(false);
+                setTrackingOrderId(orderId);
+                setTrackingPhone('');
+                setTrackingOpen(true);
+              }}
             />
           )}
 

@@ -27,9 +27,20 @@ export const getStore = (key, fallback) => {
 export const saveStore = (key, value) => localStorage.setItem(key, JSON.stringify(value));
 
 export const businessDate = (date = new Date()) => {
-  const local = new Date(date.getTime() + 5.75 * 3600000);
-  const utc = new Date(local.getTime() - 4 * 3600000);
-  return utc.toISOString().slice(0, 10);
+  // Convert given date to Nepal local time (UTC + 5:45)
+  const utcMs = date.getTime() + (date.getTimezoneOffset() * 60000);
+  const nptMs = utcMs + (5.75 * 3600000);
+  const nptDate = new Date(nptMs);
+
+  // Cutoff at 7:00 AM: orders placed between 9:00 PM and 06:59 AM belong to the same night shift
+  if (nptDate.getHours() < 7) {
+    nptDate.setDate(nptDate.getDate() - 1);
+  }
+
+  const y = nptDate.getFullYear();
+  const m = String(nptDate.getMonth() + 1).padStart(2, '0');
+  const d = String(nptDate.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 };
 
 export const nowLabel = () => new Date().toLocaleString('en-NP', { dateStyle: 'medium', timeStyle: 'short' });
@@ -64,7 +75,8 @@ export const uiToDbStatus = {
 };
 
 export const formatDbOrder = row => ({
-  id: `KP-${row.order_number}`,
+  id: row.order_code || `KP-${row.order_number}`,
+  orderCode: row.order_code || `KP-${row.order_number}`,
   seq: Number(row.order_number),
   dbId: row.id,
   trackingToken: row.tracking_token,

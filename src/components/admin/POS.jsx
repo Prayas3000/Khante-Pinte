@@ -213,7 +213,7 @@ export function POS({ products, newOrder, riders, paymentMethods, deliveryFee })
               
               if (saved) {
                 setCreatedOrder({
-                  id: `KP-${saved.order_number}`,
+                  id: saved.order_code || `KP-${saved.order_number}`,
                   createdAt: new Date().toISOString(),
                   source: 'Phone/POS',
                   customer: orderPayload.customer,

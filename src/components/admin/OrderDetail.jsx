@@ -35,7 +35,7 @@ export function OrderDetail({
     <div className="order-detail">
       <div className="order-detail-top">
         <div>
-          <strong>{o.id}</strong>
+          <strong>{o.orderCode || o.id} {o.seq ? <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>#{o.seq}</span> : null}</strong>
           <small>
             {new Date(o.createdAt).toLocaleString()} · {o.source}
           </small>

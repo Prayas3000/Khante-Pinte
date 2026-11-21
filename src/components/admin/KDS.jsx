@@ -69,7 +69,7 @@ export function KDS({ orders, changeStatus }) {
                 return (
                   <div className="kds-ticket" key={o.id}>
                     <div className="ticket-top">
-                      <strong>{o.id}</strong>
+                      <strong>#{o.seq} <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>({o.orderCode || o.id})</span></strong>
                       <small>
                         {new Date(o.createdAt).toLocaleTimeString([], {
                           hour: '2-digit',

@@ -3,7 +3,7 @@ import { X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { currency, sanitizePlainText } from '@/utils/formatters';
 
-export function CustomerAccountPanel({ account, onClose, onUpdated }) {
+export function CustomerAccountPanel({ account, onClose, onUpdated, onTrackOrder }) {
   const [profile, setProfile] = useState({
     id: '',
     name: account.name || '',
@@ -80,12 +80,7 @@ export function CustomerAccountPanel({ account, onClose, onUpdated }) {
           .eq('customer_id', customer.id)
           .order('is_default', { ascending: false })
           .order('created_at', { ascending: false }),
-        supabase
-          .from('orders')
-          .select('id,order_number,status,total,created_at,order_type,order_items(item_name,quantity,unit_price)')
-          .eq('customer_id', customer.id)
-          .order('created_at', { ascending: false })
-          .limit(30)
+        supabase.rpc('get_my_orders')
       ]);
 
       if (!live) return;
@@ -374,12 +369,12 @@ export function CustomerAccountPanel({ account, onClose, onUpdated }) {
                     </div>
                     {orders.slice(0, 3).length ? (
                       orders.slice(0, 3).map(o => (
-                        <div className="account-order-row" key={o.id}>
+                        <div className="account-order-row" key={o.id || o.orderNumber}>
                           <div>
-                            <strong>KP-{o.order_number}</strong>
+                            <strong>{o.orderCode || o.id}</strong>
                             <small>
-                              {new Date(o.created_at).toLocaleDateString('en-NP')} ·{' '}
-                              {(o.order_items || []).reduce((n, i) => n + Number(i.quantity), 0)} items
+                              {new Date(o.createdAt || o.created_at).toLocaleDateString('en-NP')} ·{' '}
+                              {(o.items || o.order_items || []).reduce((n, i) => n + Number(i.qty || i.quantity || 1), 0)} items
                             </small>
                           </div>
                           <span
@@ -413,12 +408,12 @@ export function CustomerAccountPanel({ account, onClose, onUpdated }) {
                   </div>
                   {orders.length ? (
                     orders.map(o => (
-                      <div className="account-order-full" key={o.id}>
+                      <div className="account-order-full" key={o.id || o.orderNumber}>
                         <div className="account-order-row">
                           <div>
-                            <strong>KP-{o.order_number}</strong>
+                            <strong>{o.orderCode || o.id}</strong>
                             <small>
-                              {new Date(o.created_at).toLocaleString('en-NP')} · {o.order_type}
+                              {new Date(o.createdAt || o.created_at).toLocaleString('en-NP')} · {o.type || o.order_type}
                             </small>
                           </div>
                           <span
@@ -432,10 +427,20 @@ export function CustomerAccountPanel({ account, onClose, onUpdated }) {
                           <b>{currency(o.total)}</b>
                         </div>
                         <p>
-                          {(o.order_items || [])
-                            .map(i => `${i.quantity} × ${i.item_name}`)
+                          {(o.items || o.order_items || [])
+                            .map(i => `${i.qty || i.quantity} × ${i.name || i.item_name}`)
                             .join(' · ')}
                         </p>
+                        {onTrackOrder && (
+                          <button
+                            type="button"
+                            className="btn-outline"
+                            style={{ marginTop: 8, fontSize: 12, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                            onClick={() => onTrackOrder(o.orderCode || o.id)}
+                          >
+                            Track live updates →
+                          </button>
+                        )}
                       </div>
                     ))
                   ) : (

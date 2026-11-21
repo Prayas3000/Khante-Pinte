@@ -28,10 +28,29 @@ export function OrderTracking({ orderId, phone, account, onClose, onLookup }) {
   const [ph, setPh] = useState(phone || '');
   const [order, setOrder] = useState(null);
   const [myOrders, setMyOrders] = useState([]);
+  const [guestRecentOrders, setGuestRecentOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [error, setError] = useState('');
   const [viewMode, setViewMode] = useState(orderId ? 'detail' : (account?.userId ? 'history' : 'lookup'));
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('kp_guest_recent_orders');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const active = (Array.isArray(parsed) ? parsed : []).filter(
+          o => o.expiresAt && Date.now() < o.expiresAt
+        );
+        setGuestRecentOrders(active);
+        // If guest has not specified an ID and has recent orders, default to most recent
+        if (!account?.userId && !orderId && active.length > 0) {
+          setId(active[0].orderCode);
+          setPh(active[0].phone);
+        }
+      }
+    } catch {}
+  }, [account?.userId, orderId]);
 
   const steps = [
     { label: 'Order received', status: 'New', detail: 'We have received your order.' },
@@ -60,6 +79,8 @@ export function OrderTracking({ orderId, phone, account, onClose, onLookup }) {
       if (rpcErr) throw rpcErr;
       const formatted = (data || []).map(o => ({
         ...o,
+        id: o.orderCode || o.id,
+        orderCode: o.orderCode || o.id,
         status: mapStatus[o.status] || o.status,
         subtotal: Number(o.subtotal || 0),
         discount: Number(o.discount || 0),
@@ -79,9 +100,12 @@ export function OrderTracking({ orderId, phone, account, onClose, onLookup }) {
 
       // If orderId is provided, pre-select it
       if (orderId) {
+        const cleanOrderId = String(orderId).toUpperCase().replace(/[^A-Z0-9]/g, '');
         const found = formatted.find(
-          item => item.id.toUpperCase() === String(orderId).toUpperCase() ||
-          item.seq === Number(String(orderId).replace(/\D/g, ''))
+          item =>
+            (item.orderCode && item.orderCode.replace(/[^A-Z0-9]/g, '') === cleanOrderId) ||
+            item.id.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanOrderId ||
+            item.seq === Number(cleanOrderId)
         );
         if (found) {
           setOrder(found);
@@ -98,13 +122,14 @@ export function OrderTracking({ orderId, phone, account, onClose, onLookup }) {
   };
 
   const lookupOrder = async (lookupId = id, lookupPhone = ph) => {
-    const cleanId = String(lookupId || '').trim().toUpperCase();
-    const match = cleanId.match(/^KP-(\d+)$/);
-    if (!match || (!account?.userId && !String(lookupPhone || '').trim())) {
+    const rawId = String(lookupId || '').trim().toUpperCase();
+    const cleanId = rawId.replace(/[^A-Z0-9]/g, '');
+
+    if (!cleanId || (!account?.userId && !String(lookupPhone || '').trim())) {
       setError(
         account?.userId
-          ? 'Enter a valid order ID (e.g. KP-1014).'
-          : 'Enter your order ID and the phone number used at checkout.'
+          ? 'Enter your order ID (e.g. KP9PG9ZG).'
+          : 'Enter your 8-character order ID and the phone number used at checkout.'
       );
       setOrder(null);
       return;
@@ -114,22 +139,24 @@ export function OrderTracking({ orderId, phone, account, onClose, onLookup }) {
     try {
       const { data, error: rpcError } = account?.userId
         ? await supabase.rpc('get_customer_order_tracking', {
-            p_order_number: Number(match[1])
+            p_order_id: cleanId
           })
         : await supabase.rpc('get_website_order_tracking', {
-            p_order_number: Number(match[1]),
+            p_order_id: cleanId,
             p_customer_phone: String(lookupPhone).trim()
           });
 
       if (rpcError) throw rpcError;
       if (!data) {
         setOrder(null);
-        setError('We could not find an order matching those details. Please check the order number.');
+        setError('We could not find an order matching those details. Please check your order ID and phone number.');
         return;
       }
 
       setOrder({
-        id: `KP-${data.order_number}`,
+        id: data.order_code || `KP-${data.order_number}`,
+        orderCode: data.order_code,
+        orderNumber: data.order_number,
         customer: data.customer_name,
         phone: data.customer_phone,
         type: data.order_type === 'pickup' ? 'Pickup' : 'Delivery',
@@ -144,7 +171,7 @@ export function OrderTracking({ orderId, phone, account, onClose, onLookup }) {
         riderPhone: data.rider_phone || '',
         createdAt: data.created_at,
         items: (data.items || []).map((item, index) => ({
-          id: `${data.order_number}-${index}`,
+          id: `${data.order_number || data.order_code}-${index}`,
           name: item.item_name,
           qty: Number(item.quantity),
           price: Number(item.unit_price)
@@ -390,15 +417,62 @@ export function OrderTracking({ orderId, phone, account, onClose, onLookup }) {
                   <ArrowLeft size={14} /> Back to all my orders
                 </button>
               )}
+
+              {/* Guest Recent Orders saved in LocalStorage */}
+              {!account?.userId && guestRecentOrders.length > 0 && (
+                <div style={{ background: '#f5faee', border: '1px solid #dbe8ca', borderRadius: 12, padding: 14, marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#2d4a22', marginBottom: 10 }}>
+                    <Clock size={16} /> Recent Orders on this Device
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {guestRecentOrders.map(rec => (
+                      <div
+                        key={rec.orderCode}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          background: '#fff',
+                          padding: '10px 12px',
+                          borderRadius: 8,
+                          border: '1px solid #e2e8f0',
+                          flexWrap: 'wrap',
+                          gap: 8
+                        }}
+                      >
+                        <div>
+                          <strong style={{ color: '#182230', fontSize: 14 }}>{rec.orderCode}</strong>
+                          <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                            {new Date(rec.placedAt).toLocaleTimeString('en-NP', { hour: '2-digit', minute: '2-digit' })} · {currency(rec.total)}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn-primary"
+                          style={{ padding: '6px 14px', fontSize: 12 }}
+                          onClick={() => {
+                            setId(rec.orderCode);
+                            setPh(rec.phone);
+                            lookupOrder(rec.orderCode, rec.phone);
+                          }}
+                        >
+                          Track Live
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <label>
-                Order ID
+                8-character Order ID
                 <input
                   value={id}
                   onChange={e => {
-                    setId(e.target.value.toUpperCase());
+                    setId(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''));
                     setOrder(null);
                   }}
-                  placeholder="e.g. KP-1014"
+                  placeholder="e.g. KP9PG9ZG"
                 />
               </label>
               {!account?.userId && (

@@ -110,7 +110,7 @@ export function ReceiptModal({ order: o, onClose }) {
             {/* Order Meta */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
-                <span>ORDER: {o.id}</span>
+                <span>ORDER: {o.orderCode || o.id} {o.seq ? `(#${o.seq})` : ''}</span>
                 <span>[{o.type.toUpperCase()}]</span>
               </div>
               <div>Date: {new Date(o.createdAt).toLocaleString('en-US', { hour12: true })}</div>
