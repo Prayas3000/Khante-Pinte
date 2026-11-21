@@ -1354,18 +1354,45 @@ function App() {
             setMenuOpen={setMenuOpen}
           />
 
-          {storeClosure?.active && (!storeClosure.reopen_at || new Date(storeClosure.reopen_at) > new Date()) && (
-            <div className="site-holiday-ribbon">
-              <span>🏮 <strong>Store Notice:</strong> Closed for {storeClosure.reason || 'Festival Holidays'}. Reopening on{' '}
-              {storeClosure.reopen_at
-                ? new Date(storeClosure.reopen_at).toLocaleString('en-NP', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })
-                : 'scheduled date'}. Happy Holidays!</span>
+          {storeStatusLoaded && !storeOpen && (
+            <div
+              className="site-holiday-ribbon"
+              onClick={() => {
+                if (isHolidayClosed) {
+                  setShowClosureModal(true);
+                } else {
+                  setClosedNoticeDismissed(false);
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              title="Click to view store notice & hours"
+            >
+              {isHolidayClosed ? (
+                <span>
+                  🏮 <strong>Store Notice:</strong> Closed for {storeClosure?.reason || 'Rest'}. Reopening on{' '}
+                  {storeClosure?.reopen_at
+                    ? new Date(storeClosure.reopen_at).toLocaleString('en-NP', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                    : 'next scheduled time'}
+                  . Happy Holidays!
+                </span>
+              ) : storeManualStatus === 'closed' ? (
+                <span>
+                  🏮 <strong>Store Notice:</strong> Closed for tonight. Reopening tomorrow at{' '}
+                  <strong>{formatTime12(storeHours.open_time)}</strong> (NPT). Explore our menu!
+                </span>
+              ) : (
+                <span>
+                  🌙 <strong>Store Notice:</strong> Kitchen is closed for now. Night delivery opens at{' '}
+                  <strong>{formatTime12(storeHours.open_time)}</strong> ({formatTime12(storeHours.open_time)} – {formatTime12(storeHours.close_time)} NPT). Explore our menu!
+                </span>
+              )}
             </div>
           )}
 
@@ -1706,12 +1733,22 @@ function App() {
                     color: '#182230'
                   }}
                 >
-                  We’re closed for now.
+                  {storeManualStatus === 'closed' ? 'Closed for tonight' : 'We’re closed for now.'}
                 </h2>
                 <p style={{ color: '#667085', lineHeight: 1.65, margin: '0 0 18px' }}>
-                  Our kitchen is taking a short rest, but the cravings don’t have to wait too
-                  long. We’ll be back and cooking fresh for you at{' '}
-                  <strong>{formatTime12(storeHours.open_time)}</strong>.
+                  {storeManualStatus === 'closed' ? (
+                    <>
+                      Our kitchen is resting tonight, but the cravings don’t have to wait too
+                      long. We’ll be back and cooking fresh for you tomorrow at{' '}
+                      <strong>{formatTime12(storeHours.open_time)}</strong>.
+                    </>
+                  ) : (
+                    <>
+                      Our kitchen is taking a short rest, but the cravings don’t have to wait too
+                      long. We’ll be back and cooking fresh for you at{' '}
+                      <strong>{formatTime12(storeHours.open_time)}</strong>.
+                    </>
+                  )}
                 </p>
                 <div
                   style={{
