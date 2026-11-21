@@ -545,7 +545,12 @@ function App() {
         }
       });
 
+    const syncInterval = setInterval(() => {
+      loadOrders(false);
+    }, 15000);
+
     return () => {
+      clearInterval(syncInterval);
       supabase.removeChannel(channel);
     };
   }, [adminLogged]);
@@ -743,10 +748,18 @@ function App() {
     }
     const dbStatus = uiToDbStatus[status];
     if (!dbStatus) return;
+
+    // Optimistic UI update
+    setOrders(current =>
+      current.map(o => (o.id === id ? { ...o, status } : o))
+    );
+
     const { error } = await supabase.from('orders').update({ status: dbStatus }).eq('id', order.dbId);
     if (error) {
       console.error('Order status update failed:', error);
+      alert(`Could not update order: ${error.message}`);
       setNotice(`Could not update order: ${error.message}`);
+      await loadOrders(false);
       return;
     }
     await loadOrders(false);
@@ -756,12 +769,20 @@ function App() {
   const changePaymentStatus = async (id, status) => {
     const order = orders.find(item => item.id === id);
     if (!order?.dbId) return;
+
+    // Optimistic UI update
+    setOrders(current =>
+      current.map(o => (o.id === id ? { ...o, paymentStatus: status } : o))
+    );
+
     const { error } = await supabase
       .from('orders')
       .update({ payment_status: status })
       .eq('id', order.dbId);
     if (error) {
-      setNotice(`Could not update payment status: ${error.message}`);
+      console.error('Payment status update failed:', error);
+      alert(`Could not update payment status: ${error.message}`);
+      await loadOrders(false);
       return;
     }
     await loadOrders(false);
@@ -785,9 +806,17 @@ function App() {
       }
       riderId = riderRow?.id || null;
     }
+
+    // Optimistic UI update
+    setOrders(current =>
+      current.map(o => (o.id === id ? { ...o, rider } : o))
+    );
+
     const { error } = await supabase.from('orders').update({ rider_id: riderId }).eq('id', order.dbId);
     if (error) {
-      setNotice(`Could not assign rider: ${error.message}`);
+      console.error('Rider assignment failed:', error);
+      alert(`Could not assign rider: ${error.message}`);
+      await loadOrders(false);
       return;
     }
     await loadOrders(false);

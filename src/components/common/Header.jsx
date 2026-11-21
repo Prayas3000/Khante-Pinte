@@ -31,24 +31,26 @@ export function Header({
           <a href="#menu">Menu</a>
           <a href="#about">About</a>
           <a href="#contact">Contact</a>
-          <div className="nav-social-links" style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 8 }}>
+          <div className="header-social-group">
             <a
               href="https://www.instagram.com/khantepinte.biratnagar?utm_source=ig_web_button_share_sheet&dmpr=ZDNlZDc0MzIxNw=="
               target="_blank"
               rel="noreferrer"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: '#e7a2b2' }}
-              title="Instagram"
+              className="social-nav-btn insta"
+              aria-label="Instagram"
+              title="Follow Khante Pinte on Instagram"
             >
-              <Instagram size={16} aria-hidden="true" />
+              <Instagram size={17} />
             </a>
             <a
               href="https://www.facebook.com/KhantePinte.biratnagar/"
               target="_blank"
               rel="noreferrer"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: '#8eb7f2' }}
-              title="Facebook"
+              className="social-nav-btn fb"
+              aria-label="Facebook"
+              title="Follow Khante Pinte on Facebook"
             >
-              <Facebook size={16} aria-hidden="true" />
+              <Facebook size={17} />
             </a>
           </div>
         </nav>
@@ -109,22 +111,22 @@ export function Header({
           <a href="#contact" onClick={() => setMenuOpen(false)}>
             Contact
           </a>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center', paddingTop: 6, borderTop: '1px solid #eee' }}>
+          <div className="mobile-social-pills">
             <a
               href="https://www.instagram.com/khantepinte.biratnagar?utm_source=ig_web_button_share_sheet&dmpr=ZDNlZDc0MzIxNw=="
               target="_blank"
               rel="noreferrer"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#b9516e', fontWeight: 600 }}
+              className="mobile-social-pill insta"
             >
-              <Instagram size={16} /> Instagram
+              <Instagram size={17} /> Instagram
             </a>
             <a
               href="https://www.facebook.com/KhantePinte.biratnagar/"
               target="_blank"
               rel="noreferrer"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#3b69b5', fontWeight: 600 }}
+              className="mobile-social-pill fb"
             >
-              <Facebook size={16} /> Facebook
+              <Facebook size={17} /> Facebook
             </a>
           </div>
         </div>
