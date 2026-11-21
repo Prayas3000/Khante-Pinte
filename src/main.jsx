@@ -21,7 +21,9 @@ import {
   getStore,
   saveStore,
   businessDate,
-  formatDbOrder
+  formatDbOrder,
+  uiToDbStatus,
+  dbToUiStatus
 } from '@/utils/formatters';
 import { playNewOrderChime } from '@/utils/audioChime';
 
@@ -781,125 +783,147 @@ function App() {
   };
 
   const changeStatus = async (id, status) => {
-    const order = orders.find(item => item.id === id);
-    if (!order?.dbId) {
-      setNotice('This order is not saved in the database. Refresh orders and try again.');
-      return;
-    }
-    const dbStatus = uiToDbStatus[status];
-    if (!dbStatus) return;
-
-    // Optimistic UI update
-    setOrders(current =>
-      current.map(o => (o.id === id ? { ...o, status } : o))
-    );
-
-    // 1. Try secure Postgres RPC (audited, SECURITY DEFINER, transaction-safe)
-    const { data: rpcData, error: rpcError } = await supabase.rpc('update_order_status', {
-      p_order_id: order.dbId,
-      p_status: dbStatus
-    });
-
-    if (rpcError) {
-      console.warn('RPC update_order_status error, falling back to direct table update:', rpcError);
-      // 2. Direct table update fallback with .select() verification
-      const { data: directData, error: directError } = await supabase
-        .from('orders')
-        .update({ status: dbStatus })
-        .eq('id', order.dbId)
-        .select('id, status');
-
-      if (directError || !directData || directData.length === 0) {
-        console.error('Order status update failed completely:', directError || '0 rows updated');
-        alert(`Could not update order: ${directError?.message || rpcError.message || 'Database update failed.'}`);
-        setNotice(`Could not update order: ${directError?.message || rpcError.message || 'Update failed.'}`);
-        await loadOrders(false);
+    try {
+      const order = orders.find(item => item.id === id || item.dbId === id);
+      if (!order?.dbId) {
+        setNotice('This order is not saved in the database. Refresh orders and try again.');
         return;
       }
-    }
+      const dbStatus = uiToDbStatus[status] || status.toLowerCase().replace(/\s+/g, '_');
+      if (!dbStatus) {
+        console.warn('Unknown status transition:', { id, status });
+        return;
+      }
 
-    await loadOrders(false);
-    setNotice(`${id} updated to ${status}.`);
+      const displayStatus = dbToUiStatus[dbStatus] || status;
+
+      // Optimistic UI update
+      setOrders(current =>
+        current.map(o => (o.id === order.id ? { ...o, status: displayStatus } : o))
+      );
+
+      // 1. Try secure Postgres RPC (audited, SECURITY DEFINER, transaction-safe)
+      const { data: rpcData, error: rpcError } = await supabase.rpc('update_order_status', {
+        p_order_id: order.dbId,
+        p_status: dbStatus,
+        p_cancellation_reason: null
+      });
+
+      if (rpcError) {
+        console.warn('RPC update_order_status error, falling back to direct table update:', rpcError);
+        // 2. Direct table update fallback with .select() verification
+        const { data: directData, error: directError } = await supabase
+          .from('orders')
+          .update({ status: dbStatus })
+          .eq('id', order.dbId)
+          .select('id, status');
+
+        if (directError || !directData || directData.length === 0) {
+          console.error('Order status update failed completely:', directError || '0 rows updated');
+          alert(`Could not update order: ${directError?.message || rpcError?.message || 'Database update failed.'}`);
+          setNotice(`Could not update order: ${directError?.message || rpcError?.message || 'Update failed.'}`);
+          await loadOrders(false);
+          return;
+        }
+      }
+
+      await loadOrders(false);
+      setNotice(`${order.id} updated to ${displayStatus}.`);
+    } catch (err) {
+      console.error('changeStatus error:', err);
+      alert(`Status update failed: ${err.message}`);
+      await loadOrders(false);
+    }
   };
 
   const changePaymentStatus = async (id, status) => {
-    const order = orders.find(item => item.id === id);
-    if (!order?.dbId) return;
+    try {
+      const order = orders.find(item => item.id === id || item.dbId === id);
+      if (!order?.dbId) return;
 
-    // Optimistic UI update
-    setOrders(current =>
-      current.map(o => (o.id === id ? { ...o, paymentStatus: status } : o))
-    );
+      // Optimistic UI update
+      setOrders(current =>
+        current.map(o => (o.id === order.id ? { ...o, paymentStatus: status } : o))
+      );
 
-    const { error: rpcError } = await supabase.rpc('update_order_payment_status', {
-      p_order_id: order.dbId,
-      p_payment_status: status
-    });
+      const { error: rpcError } = await supabase.rpc('update_order_payment_status', {
+        p_order_id: order.dbId,
+        p_payment_status: status
+      });
 
-    if (rpcError) {
-      console.warn('RPC update_order_payment_status error, falling back:', rpcError);
-      const { error: directError } = await supabase
-        .from('orders')
-        .update({ payment_status: status })
-        .eq('id', order.dbId)
-        .select('id, payment_status');
+      if (rpcError) {
+        console.warn('RPC update_order_payment_status error, falling back:', rpcError);
+        const { error: directError } = await supabase
+          .from('orders')
+          .update({ payment_status: status })
+          .eq('id', order.dbId)
+          .select('id, payment_status');
 
-      if (directError) {
-        alert(`Could not update payment status: ${directError.message || rpcError.message}`);
-        await loadOrders(false);
-        return;
+        if (directError) {
+          alert(`Could not update payment status: ${directError.message || rpcError.message}`);
+          await loadOrders(false);
+          return;
+        }
       }
-    }
 
-    await loadOrders(false);
-    setNotice(`${id} payment marked ${status}.`);
+      await loadOrders(false);
+      setNotice(`${order.id} payment marked ${status}.`);
+    } catch (err) {
+      console.error('changePaymentStatus error:', err);
+      await loadOrders(false);
+    }
   };
 
   const assignRider = async (id, rider) => {
-    const order = orders.find(o => o.id === id);
-    if (!order?.dbId) return;
-    let riderId = rider ? riderIds[rider] : null;
-    if (rider && !riderId) {
-      const { data: riderRow, error: lookupError } = await supabase
-        .from('riders')
-        .select('id')
-        .eq('name', rider)
-        .eq('active', true)
-        .maybeSingle();
-      if (lookupError) {
-        setNotice(`Could not find rider: ${lookupError.message}`);
-        return;
+    try {
+      const order = orders.find(o => o.id === id || o.dbId === id);
+      if (!order?.dbId) return;
+      let riderId = rider ? riderIds[rider] : null;
+      if (rider && !riderId) {
+        const { data: riderRow, error: lookupError } = await supabase
+          .from('riders')
+          .select('id')
+          .eq('name', rider)
+          .eq('active', true)
+          .maybeSingle();
+        if (lookupError) {
+          setNotice(`Could not find rider: ${lookupError.message}`);
+          return;
+        }
+        riderId = riderRow?.id || null;
       }
-      riderId = riderRow?.id || null;
-    }
 
-    // Optimistic UI update
-    setOrders(current =>
-      current.map(o => (o.id === id ? { ...o, rider } : o))
-    );
+      // Optimistic UI update
+      setOrders(current =>
+        current.map(o => (o.id === order.id ? { ...o, rider } : o))
+      );
 
-    const { error: rpcError } = await supabase.rpc('assign_order_rider', {
-      p_order_id: order.dbId,
-      p_rider_id: riderId
-    });
+      const { error: rpcError } = await supabase.rpc('assign_order_rider', {
+        p_order_id: order.dbId,
+        p_rider_id: riderId
+      });
 
-    if (rpcError) {
-      console.warn('RPC assign_order_rider error, falling back:', rpcError);
-      const { error: directError } = await supabase
-        .from('orders')
-        .update({ rider_id: riderId })
-        .eq('id', order.dbId)
-        .select('id, rider_id');
+      if (rpcError) {
+        console.warn('RPC assign_order_rider error, falling back:', rpcError);
+        const { error: directError } = await supabase
+          .from('orders')
+          .update({ rider_id: riderId })
+          .eq('id', order.dbId)
+          .select('id, rider_id');
 
-      if (directError) {
-        alert(`Could not assign rider: ${directError.message || rpcError.message}`);
-        await loadOrders(false);
-        return;
+        if (directError) {
+          alert(`Could not assign rider: ${directError.message || rpcError.message}`);
+          await loadOrders(false);
+          return;
+        }
       }
-    }
 
-    await loadOrders(false);
-    setNotice(rider ? `${rider} assigned to ${id}.` : `Rider removed from ${id}.`);
+      await loadOrders(false);
+      setNotice(rider ? `${rider} assigned to ${order.id}.` : `Rider removed from ${order.id}.`);
+    } catch (err) {
+      console.error('assignRider error:', err);
+      await loadOrders(false);
+    }
   };
 
   const cancelOrder = id => {

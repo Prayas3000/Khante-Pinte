@@ -46,12 +46,21 @@ export const dbToUiStatus = {
 
 export const uiToDbStatus = {
   New: 'pending',
+  Pending: 'pending',
   Confirmed: 'confirmed',
   Preparing: 'preparing',
   Ready: 'ready',
   'Out for Delivery': 'out_for_delivery',
   Delivered: 'delivered',
-  Cancelled: 'cancelled'
+  Cancelled: 'cancelled',
+  new: 'pending',
+  pending: 'pending',
+  confirmed: 'confirmed',
+  preparing: 'preparing',
+  ready: 'ready',
+  out_for_delivery: 'out_for_delivery',
+  delivered: 'delivered',
+  cancelled: 'cancelled'
 };
 
 export const formatDbOrder = row => ({

@@ -1,14 +1,26 @@
-import React from 'react';
-import { RefreshCw, ChevronRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { RefreshCw, ChevronRight, Loader2 } from 'lucide-react';
 import { currency } from '@/utils/formatters';
 
 export function KDS({ orders, changeStatus }) {
+  const [updatingId, setUpdatingId] = useState(null);
+
   const columns = [
     ['New', 'New'],
     ['Confirmed', 'Confirmed'],
     ['Preparing', 'Preparing'],
     ['Ready', 'Ready']
   ];
+
+  const handleStatusTransition = async (orderId, targetStatus) => {
+    if (updatingId) return;
+    setUpdatingId(orderId);
+    try {
+      await changeStatus(orderId, targetStatus);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
 
   return (
     <div className="kds">
@@ -34,54 +46,75 @@ export function KDS({ orders, changeStatus }) {
             </div>
             {orders
               .filter(o => o.status === status)
-              .map(o => (
-                <div className="kds-ticket" key={o.id}>
-                  <div className="ticket-top">
-                    <strong>{o.id}</strong>
-                    <small>
-                      {new Date(o.createdAt).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </small>
-                  </div>
-                  <div className="ticket-customer">
-                    {o.customer} · {o.source}
-                  </div>
-                  {o.items.map(i => (
-                    <div className="ticket-item" key={i.id}>
-                      <b>{i.qty}×</b>
-                      {i.name}
+              .map(o => {
+                const isUpdating = updatingId === o.id;
+                const nextStatus =
+                  status === 'New'
+                    ? 'Confirmed'
+                    : status === 'Confirmed'
+                    ? 'Preparing'
+                    : status === 'Preparing'
+                    ? 'Ready'
+                    : 'Out for Delivery';
+
+                const buttonText =
+                  status === 'New'
+                    ? 'Confirm order'
+                    : status === 'Confirmed'
+                    ? 'Start preparing'
+                    : status === 'Preparing'
+                    ? 'Mark ready'
+                    : 'Send for delivery';
+
+                return (
+                  <div className="kds-ticket" key={o.id}>
+                    <div className="ticket-top">
+                      <strong>{o.id}</strong>
+                      <small>
+                        {new Date(o.createdAt).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </small>
                     </div>
-                  ))}
-                  {o.note && <div className="ticket-note">Note: {o.note}</div>}
-                  <div className="ticket-total">{currency(o.total)}</div>
-                  <button
-                    className="btn-primary full"
-                    onClick={() =>
-                      changeStatus(
-                        o.id,
-                        status === 'New'
-                          ? 'Confirmed'
-                          : status === 'Confirmed'
-                          ? 'Preparing'
-                          : status === 'Preparing'
-                          ? 'Ready'
-                          : 'Out for Delivery'
-                      )
-                    }
-                  >
-                    {status === 'New'
-                      ? 'Confirm order'
-                      : status === 'Confirmed'
-                      ? 'Start preparing'
-                      : status === 'Preparing'
-                      ? 'Mark ready'
-                      : 'Send for delivery'}{' '}
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              ))}
+                    <div className="ticket-customer">
+                      {o.customer} · {o.source}
+                    </div>
+                    {o.items.map(i => (
+                      <div className="ticket-item" key={i.id}>
+                        <b>{i.qty}×</b>
+                        {i.name}
+                      </div>
+                    ))}
+                    {o.note && <div className="ticket-note">Note: {o.note}</div>}
+                    <div className="ticket-total">{currency(o.total)}</div>
+                    <button
+                      type="button"
+                      disabled={isUpdating}
+                      className="btn-primary full"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        cursor: isUpdating ? 'wait' : 'pointer',
+                        opacity: isUpdating ? 0.75 : 1
+                      }}
+                      onClick={() => handleStatusTransition(o.id, nextStatus)}
+                    >
+                      {isUpdating ? (
+                        <>
+                          <Loader2 size={16} className="spin" /> Updating...
+                        </>
+                      ) : (
+                        <>
+                          {buttonText} <ChevronRight size={16} />
+                        </>
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
             {!orders.some(o => o.status === status) && (
               <div className="empty-column">No tickets</div>
             )}
