@@ -13,7 +13,8 @@ import {
   Bike,
   Wallet,
   X,
-  ShoppingBag
+  ShoppingBag,
+  Sparkles
 } from 'lucide-react';
 
 import {
@@ -40,6 +41,7 @@ import { Checkout } from '@/components/customer/Checkout';
 import { CustomerAuth } from '@/components/customer/CustomerAuth';
 import { CustomerAccountPanel } from '@/components/customer/CustomerAccountPanel';
 import { OrderTracking } from '@/components/customer/OrderTracking';
+import { OfferModal } from '@/components/customer/OfferModal';
 
 // Admin Components
 import { AdminLogin } from '@/components/admin/AdminLogin';
@@ -52,6 +54,9 @@ function App() {
 
   const [products, setProducts] = useState([]);
   const [dbCategories, setDbCategories] = useState(['All']);
+  const [activeOffer, setActiveOffer] = useState(null);
+  const [showOfferModal, setShowOfferModal] = useState(false);
+  const [storeClosure, setStoreClosure] = useState(null);
 
   useEffect(() => {
     const loadMenu = async () => {
@@ -155,7 +160,9 @@ function App() {
         { data: feeRow, error: feeError },
         { data: hoursRow },
         { data: manualRow },
-        { data: openNow, error: openError }
+        { data: openNow, error: openError },
+        { data: offerRow },
+        { data: closureRow }
       ] = await Promise.all([
         supabase
           .from('payment_methods')
@@ -176,7 +183,17 @@ function App() {
           .select('setting_value')
           .eq('setting_key', 'store_manual_status')
           .maybeSingle(),
-        supabase.rpc('is_store_open')
+        supabase.rpc('is_store_open'),
+        supabase
+          .from('business_settings')
+          .select('setting_value')
+          .eq('setting_key', 'active_offer')
+          .maybeSingle(),
+        supabase
+          .from('business_settings')
+          .select('setting_value')
+          .eq('setting_key', 'store_closure')
+          .maybeSingle()
       ]);
 
       if (methodsError) console.error('Payment methods loading failed:', methodsError);
@@ -189,6 +206,33 @@ function App() {
       if (manualRow?.setting_value) {
         setStoreManualStatus(String(manualRow.setting_value).replaceAll('"', ''));
       }
+
+      if (offerRow?.setting_value) {
+        let offerObj = offerRow.setting_value;
+        if (typeof offerObj === 'string') {
+          try { offerObj = JSON.parse(offerObj); } catch {}
+        }
+        setActiveOffer(offerObj);
+        if (offerObj?.active && offerObj?.image_url && offerObj?.show_as_popup) {
+          try {
+            const dismissedUntil = Number(localStorage.getItem('kp_offer_dismissed_until') || 0);
+            if (Date.now() > dismissedUntil) {
+              setTimeout(() => setShowOfferModal(true), 1200);
+            }
+          } catch {
+            setShowOfferModal(true);
+          }
+        }
+      }
+
+      if (closureRow?.setting_value) {
+        let closureObj = closureRow.setting_value;
+        if (typeof closureObj === 'string') {
+          try { closureObj = JSON.parse(closureObj); } catch {}
+        }
+        setStoreClosure(closureObj);
+      }
+
       if (!openError) {
         setStoreOpen(!!openNow);
         setStoreStatusLoaded(true);
@@ -1215,17 +1259,48 @@ function App() {
               setTrackingPhone('');
               setTrackingOpen(true);
             }}
-            onOpenCart={() =>
-              storeOpen
-                ? setCheckoutOpen(true)
-                : setNotice(
-                    'Khante Pinte is currently closed. Please order during our business hours.'
-                  )
-            }
+            onOpenCart={() => {
+              if (storeOpen) {
+                setCheckoutOpen(true);
+              } else if (storeClosure?.active && (!storeClosure.reopen_at || new Date(storeClosure.reopen_at) > new Date())) {
+                setNotice(`Khante Pinte is currently closed for ${storeClosure.reason || 'holidays'}. We will reopen on ${storeClosure.reopen_at ? new Date(storeClosure.reopen_at).toLocaleString('en-NP', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'scheduled date'}.`);
+              } else {
+                setNotice('Khante Pinte is currently closed. Please order during our business hours.');
+              }
+            }}
             cartCount={cartCount}
             menuOpen={menuOpen}
             setMenuOpen={setMenuOpen}
           />
+
+          {storeClosure?.active && (!storeClosure.reopen_at || new Date(storeClosure.reopen_at) > new Date()) && (
+            <div className="site-holiday-ribbon">
+              <span>🏮 <strong>Store Notice:</strong> Closed for {storeClosure.reason || 'Festival Holidays'}. Reopening on{' '}
+              {storeClosure.reopen_at
+                ? new Date(storeClosure.reopen_at).toLocaleString('en-NP', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                : 'scheduled date'}. Happy Holidays!</span>
+            </div>
+          )}
+
+          {activeOffer?.active && activeOffer?.image_url && activeOffer?.show_as_banner && (
+            <div
+              className="site-announcement-ribbon"
+              onClick={() => setShowOfferModal(true)}
+              role="button"
+              tabIndex={0}
+              title="Click to view special offer"
+            >
+              <span className="ribbon-tag">SPECIAL OFFER</span>
+              <span>{activeOffer.title || 'Tap to view our special offer & festive discount!'}</span>
+              <Sparkles size={14} style={{ color: '#b9ed75' }} />
+            </div>
+          )}
 
           <main id="top">
             <section className="hero">
@@ -1686,6 +1761,17 @@ function App() {
               onSubmit={submitCheckout}
             />
           )}
+
+          {showOfferModal && activeOffer?.active && activeOffer?.image_url && (
+            <OfferModal
+              offer={activeOffer}
+              onClose={() => setShowOfferModal(false)}
+              onApplyVoucher={code => {
+                setVoucherInput(code);
+                applyVoucher();
+              }}
+            />
+          )}
         </>
       ) : (
         <AdminShell
@@ -1731,6 +1817,10 @@ function App() {
           onLogout={logoutAdmin}
           brandLogo={brandLogo}
           setBrandLogo={setBrandLogo}
+          activeOffer={activeOffer}
+          setActiveOffer={setActiveOffer}
+          storeClosure={storeClosure}
+          setStoreClosure={setStoreClosure}
         />
       )}
 

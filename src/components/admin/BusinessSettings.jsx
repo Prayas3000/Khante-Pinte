@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { formatTime12, parseTime12 } from '@/utils/formatters';
+import { Sparkles, Calendar, Clock, AlertTriangle, Image as ImageIcon, Trash2, Eye, CheckCircle2, X, Tag } from 'lucide-react';
+import { OfferModal } from '@/components/customer/OfferModal';
 
 export function BusinessSettings({
   paymentMethods,
@@ -14,7 +16,12 @@ export function BusinessSettings({
   storeOpen,
   setStoreOpen,
   brandLogo,
-  setBrandLogo
+  setBrandLogo,
+  activeOffer,
+  setActiveOffer,
+  storeClosure,
+  setStoreClosure,
+  vouchers = []
 }) {
   const [feeInput, setFeeInput] = useState(String(deliveryFee));
   const [savingFee, setSavingFee] = useState(false);
@@ -25,6 +32,42 @@ export function BusinessSettings({
   const [uploadingCode, setUploadingCode] = useState('');
   const [message, setMessage] = useState('');
   const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  // --- Offers Section State ---
+  const [offerForm, setOfferForm] = useState({
+    active: activeOffer?.active ?? false,
+    image_url: activeOffer?.image_url || '',
+    title: activeOffer?.title || '',
+    description: activeOffer?.description || '',
+    voucher_code: activeOffer?.voucher_code || '',
+    button_text: activeOffer?.button_text || 'View Menu & Order',
+    show_as_popup: activeOffer?.show_as_popup ?? true,
+    show_as_banner: activeOffer?.show_as_banner ?? true
+  });
+  const [uploadingOfferImage, setUploadingOfferImage] = useState(false);
+  const [savingOffer, setSavingOffer] = useState(false);
+  const [previewingOffer, setPreviewingOffer] = useState(false);
+
+  useEffect(() => {
+    if (activeOffer) {
+      setOfferForm({
+        active: activeOffer.active ?? false,
+        image_url: activeOffer.image_url || '',
+        title: activeOffer.title || '',
+        description: activeOffer.description || '',
+        voucher_code: activeOffer.voucher_code || '',
+        button_text: activeOffer.button_text || 'View Menu & Order',
+        show_as_popup: activeOffer.show_as_popup ?? true,
+        show_as_banner: activeOffer.show_as_banner ?? true
+      });
+    }
+  }, [activeOffer]);
+
+  // --- Scheduled Store Closure State ---
+  const [closureDays, setClosureDays] = useState(2);
+  const [closureReason, setClosureReason] = useState('Dashain Festival Holidays');
+  const [customReopenDate, setCustomReopenDate] = useState('');
+  const [savingClosure, setSavingClosure] = useState(false);
 
   const uploadBrandLogo = async file => {
     if (!file) return;
@@ -101,49 +144,16 @@ export function BusinessSettings({
       return;
     }
     setDeliveryFee(amount);
-    setMessage('Delivery charge saved successfully.');
+    setMessage('Delivery fee updated successfully.');
   };
 
-  const addMethod = async () => {
-    const code = newCode.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
-    if (!newName.trim() || !code) {
-      setMessage('Enter a payment method name and code.');
-      return;
-    }
-    setSavingMethod(true);
-    setMessage('');
-    const { data, error } = await supabase
-      .from('payment_methods')
-      .insert({
-        code,
-        name: newName.trim(),
-        instructions: newInstructions.trim(),
-        enabled: true,
-        requires_proof: true,
-        display_order: (paymentMethods?.length || 0) + 1
-      })
-      .select('code,name,instructions,qr_image_url,enabled,display_order,requires_proof')
-      .single();
-    setSavingMethod(false);
-    if (error) {
-      setMessage(`Could not add payment method: ${error.message}`);
-      return;
-    }
-    setPaymentMethods(current => [...current, data]);
-    setNewName('');
-    setNewCode('');
-    setNewInstructions('');
-    setMessage('Payment method added. You can now upload its QR code.');
-  };
-
-  const uploadQr = async (method, file) => {
+  const uploadMethodQR = async (method, file) => {
     if (!file) return;
-    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
-      setMessage('Use PNG, JPG or WebP images.');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setMessage('QR image must be smaller than 5 MB.');
+    if (
+      !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ||
+      file.size > 5 * 1024 * 1024
+    ) {
+      setMessage('Choose a JPG, PNG or WEBP image smaller than 5 MB.');
       return;
     }
     setUploadingCode(method.code);
@@ -261,15 +271,162 @@ export function BusinessSettings({
     );
   };
 
+  // --- Scheduled Holiday Closure Actions ---
+  const scheduleClosure = async (days, reasonText, customDateStr = '') => {
+    setMessage('');
+    setSavingClosure(true);
+    try {
+      let reopenDate;
+      const now = new Date();
+      if (customDateStr) {
+        reopenDate = new Date(customDateStr);
+        if (isNaN(reopenDate.getTime()) || reopenDate <= now) {
+          throw new Error('Please choose a valid future reopening date & time.');
+        }
+      } else {
+        const target = new Date(now.getTime() + days * 24 * 3600 * 1000);
+        const [openH, openM] = (storeHours?.open_time || '21:00').split(':').map(Number);
+        target.setHours(openH || 21, openM || 0, 0, 0);
+        reopenDate = target;
+      }
+
+      const closurePayload = {
+        active: true,
+        reason: reasonText.trim() || 'Holiday closure',
+        days: days || 0,
+        reopen_at: reopenDate.toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase.from('business_settings').upsert(
+        {
+          setting_key: 'store_closure',
+          setting_value: closurePayload,
+          updated_at: new Date().toISOString()
+        },
+        { onConflict: 'setting_key' }
+      );
+      if (error) throw error;
+
+      if (setStoreClosure) setStoreClosure(closurePayload);
+      const { data: statusData } = await supabase.rpc('is_store_open');
+      setStoreOpen(!!statusData);
+      setMessage(`Holiday closure scheduled. Store closed until ${reopenDate.toLocaleString('en-NP', { dateStyle: 'medium', timeStyle: 'short' })} for ${reasonText}.`);
+    } catch (err) {
+      setMessage(`Could not set closure: ${err.message}`);
+    } finally {
+      setSavingClosure(false);
+    }
+  };
+
+  const cancelClosure = async () => {
+    setMessage('');
+    setSavingClosure(true);
+    try {
+      const clearPayload = {
+        active: false,
+        reason: '',
+        days: 0,
+        reopen_at: null,
+        updated_at: new Date().toISOString()
+      };
+      const { error } = await supabase.from('business_settings').upsert(
+        {
+          setting_key: 'store_closure',
+          setting_value: clearPayload,
+          updated_at: new Date().toISOString()
+        },
+        { onConflict: 'setting_key' }
+      );
+      if (error) throw error;
+
+      if (setStoreClosure) setStoreClosure(clearPayload);
+      const { data: statusData } = await supabase.rpc('is_store_open');
+      setStoreOpen(!!statusData);
+      setMessage('Holiday closure cancelled. Normal store availability restored.');
+    } catch (err) {
+      setMessage(`Could not cancel closure: ${err.message}`);
+    } finally {
+      setSavingClosure(false);
+    }
+  };
+
+  // --- Offers Section Actions ---
+  const uploadOfferImage = async file => {
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      setMessage('Choose a JPG, PNG or WEBP image smaller than 5 MB.');
+      return;
+    }
+    setUploadingOfferImage(true);
+    setMessage('');
+    try {
+      const ext = file.type.split('/')[1].replace('jpeg', 'jpg');
+      const path = `offers/offer-${Date.now()}.${ext}`;
+      const { error: upError } = await supabase.storage
+        .from('kp-brand-assets')
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (upError) throw upError;
+
+      const { data } = supabase.storage.from('kp-brand-assets').getPublicUrl(path);
+      const newUrl = `${data.publicUrl}?v=${Date.now()}`;
+      setOfferForm(f => ({ ...f, image_url: newUrl }));
+      setMessage('Offer photo uploaded. Click "Save Offer Changes" to activate.');
+    } catch (err) {
+      setMessage(`Offer photo upload failed: ${err.message}`);
+    } finally {
+      setUploadingOfferImage(false);
+    }
+  };
+
+  const saveOfferSettings = async (overrideActive = null) => {
+    setSavingOffer(true);
+    setMessage('');
+    try {
+      const nextActive = overrideActive !== null ? overrideActive : offerForm.active;
+      const payload = {
+        active: !!nextActive,
+        image_url: offerForm.image_url || '',
+        title: offerForm.title?.trim() || '',
+        description: offerForm.description?.trim() || '',
+        voucher_code: offerForm.voucher_code?.trim() || '',
+        button_text: offerForm.button_text?.trim() || 'View Menu & Order',
+        show_as_popup: offerForm.show_as_popup ?? true,
+        show_as_banner: offerForm.show_as_banner ?? true,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase.from('business_settings').upsert(
+        {
+          setting_key: 'active_offer',
+          setting_value: payload,
+          updated_at: new Date().toISOString()
+        },
+        { onConflict: 'setting_key' }
+      );
+      if (error) throw error;
+
+      setOfferForm(f => ({ ...f, active: payload.active }));
+      if (setActiveOffer) setActiveOffer(payload);
+      setMessage(payload.active ? 'Offer is now LIVE on customer website!' : 'Offer settings saved (Offer is currently OFF).');
+    } catch (err) {
+      setMessage(`Could not save offer: ${err.message}`);
+    } finally {
+      setSavingOffer(false);
+    }
+  };
+
+  const isClosureActive = storeClosure?.active && (!storeClosure.reopen_at || new Date(storeClosure.reopen_at) > new Date());
+
   return (
     <div style={{ display: 'grid', gap: 20 }}>
+      {/* 1. KHANTE PINTE BRANDING */}
       <section className="panel" style={{ padding: 20 }}>
         <div className="panel-head">
           <div>
             <h3>Khante Pinte branding</h3>
             <small>
-              Upload or replace the logo. It appears in the customer header, footer and admin
-              workspace.
+              Upload or replace the logo. It appears in the customer header, footer and admin workspace.
             </small>
           </div>
         </div>
@@ -290,12 +447,176 @@ export function BusinessSettings({
           />
         </label>
         {message && (
-          <p className={message.includes('updated') ? 'success-note' : 'form-error'}>
+          <p className={message.includes('updated') || message.includes('saved') || message.includes('scheduled') ? 'success-note' : 'form-error'}>
             {message}
           </p>
         )}
       </section>
 
+      {/* 2. OFFERS & FESTIVE ANNOUNCEMENTS (NEW SECTION) */}
+      <section className="panel" style={{ padding: 20 }}>
+        <div className="panel-head">
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Sparkles size={20} color="#e97942" />
+              <h3 style={{ margin: 0 }}>Offers & Festive Announcements</h3>
+            </div>
+            <small>
+              Upload promotional banners or festive greetings (Dashain, Tihar, New Year). Pop up on customer website or display as a top announcement bar.
+            </small>
+          </div>
+          <span className={`admin-offer-status-badge ${offerForm.active && offerForm.image_url ? 'live' : 'off'}`}>
+            {offerForm.active && offerForm.image_url ? '● OFFER IS LIVE' : '○ OFFER IS OFF'}
+          </span>
+        </div>
+
+        {/* Live Toggle Bar */}
+        <div className="admin-offer-toggle-bar">
+          <div>
+            <strong>Customer Visibility</strong>
+            <small style={{ display: 'block', color: '#667085', marginTop: 2 }}>
+              {offerForm.active
+                ? 'Offer is ON: Customers will see the popup and announcement banner on the website.'
+                : 'Offer is OFF: Nothing is shown to customers.'}
+            </small>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              className={offerForm.active ? 'btn-primary' : 'btn-outline'}
+              onClick={() => {
+                const next = !offerForm.active;
+                setOfferForm(f => ({ ...f, active: next }));
+                saveOfferSettings(next);
+              }}
+              disabled={savingOffer || !offerForm.image_url}
+              title={!offerForm.image_url ? 'Please upload an offer photo first' : ''}
+            >
+              {offerForm.active ? 'Turn Offer OFF' : 'Turn Offer ON'}
+            </button>
+          </div>
+        </div>
+
+        {/* Offer Photo Container */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', fontWeight: 700, marginBottom: 6 }}>
+            Offer / Greeting Photo <span style={{ color: '#b42318' }}>*</span>
+          </label>
+          {offerForm.image_url ? (
+            <div>
+              <div className="admin-image-container-preview">
+                <img src={offerForm.image_url} alt="Offer banner preview" />
+              </div>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <label className="btn-outline" style={{ cursor: 'pointer', margin: 0 }}>
+                  Replace photo
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    disabled={uploadingOfferImage}
+                    onChange={e => uploadOfferImage(e.target.files?.[0])}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="danger-btn"
+                  onClick={() => {
+                    setOfferForm(f => ({ ...f, image_url: '', active: false }));
+                  }}
+                >
+                  <Trash2 size={14} /> Remove photo
+                </button>
+                <button
+                  type="button"
+                  className="btn-outline"
+                  onClick={() => setPreviewingOffer(true)}
+                >
+                  <Eye size={14} /> Preview popup
+                </button>
+              </div>
+            </div>
+          ) : (
+            <label className="admin-file-label" style={{ borderStyle: 'dashed', padding: 28, textAlign: 'center' }}>
+              <ImageIcon size={32} style={{ margin: '0 auto 8px', color: '#98a2b3' }} />
+              <strong>{uploadingOfferImage ? 'Uploading offer photo…' : 'Click to upload Offer Flyer / Banner photo'}</strong>
+              <small style={{ color: '#667085', marginTop: 4 }}>
+                Supports JPG, PNG, WEBP (landscape, portrait or square, up to 5 MB). Displayed crisp and uncropped.
+              </small>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                disabled={uploadingOfferImage}
+                onChange={e => uploadOfferImage(e.target.files?.[0])}
+              />
+            </label>
+          )}
+        </div>
+
+        {/* Offer Title & Description */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 14, marginBottom: 14 }}>
+          <label>
+            Headline / Occasion Title (optional)
+            <input
+              value={offerForm.title}
+              maxLength={80}
+              onChange={e => setOfferForm(f => ({ ...f, title: e.target.value.slice(0, 80) }))}
+              placeholder="e.g. Dashain Special Dhamaka Offer! 🏮"
+            />
+          </label>
+          <label>
+            Linked Voucher Code (optional)
+            <input
+              value={offerForm.voucher_code}
+              maxLength={20}
+              onChange={e => setOfferForm(f => ({ ...f, voucher_code: e.target.value.toUpperCase().slice(0, 20) }))}
+              placeholder="e.g. DASHAIN15"
+            />
+          </label>
+        </div>
+
+        <label style={{ display: 'block', marginBottom: 14 }}>
+          Announcement Message / Offer Details (optional)
+          <textarea
+            rows="2"
+            maxLength={300}
+            value={offerForm.description}
+            onChange={e => setOfferForm(f => ({ ...f, description: e.target.value.slice(0, 300) }))}
+            placeholder="e.g. Wishing all our food lovers a joyful Vijaya Dashami! Use code DASHAIN15 for 15% off on orders above Rs. 1,000."
+          />
+        </label>
+
+        {/* Display modes */}
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', margin: '12px 0 16px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={offerForm.show_as_popup}
+              onChange={e => setOfferForm(f => ({ ...f, show_as_popup: e.target.checked }))}
+            />
+            <span>Pop up automatically when customer opens website</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={offerForm.show_as_banner}
+              onChange={e => setOfferForm(f => ({ ...f, show_as_banner: e.target.checked }))}
+            />
+            <span>Show clickable announcement bar above menu</span>
+          </label>
+        </div>
+
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={() => saveOfferSettings()}
+          disabled={savingOffer || uploadingOfferImage}
+        >
+          {savingOffer ? 'Saving offer…' : 'Save Offer Settings'}
+        </button>
+      </section>
+
+      {/* 3. STORE AVAILABILITY, BUSINESS HOURS & HOLIDAY CLOSURES */}
       <section className="panel" style={{ padding: 20 }}>
         <div className="panel-head">
           <div>
@@ -306,6 +627,8 @@ export function BusinessSettings({
             {storeOpen ? 'OPEN NOW' : 'CLOSED NOW'}
           </strong>
         </div>
+
+        {/* Regular Hours Input */}
         <div
           style={{
             display: 'grid',
@@ -347,11 +670,12 @@ export function BusinessSettings({
         >
           {savingHours ? 'Saving…' : 'Save business hours'}
         </button>
+
+        {/* Manual Status Buttons */}
         <div style={{ borderTop: '1px solid #eaecf0', marginTop: 18, paddingTop: 16 }}>
           <strong>Store control</strong>
           <p style={{ color: '#667085', margin: '6px 0 12px' }}>
-            Automatic follows the schedule. Manual open/closed overrides the schedule until you
-            switch back to Automatic.
+            Automatic follows the schedule. Manual open/closed overrides the schedule until you switch back to Automatic.
           </p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button
@@ -374,15 +698,144 @@ export function BusinessSettings({
             </button>
           </div>
         </div>
+
+        {/* NEW: SCHEDULED HOLIDAY / MULTI-DAY CLOSURE SUB-PANEL */}
+        <div style={{ borderTop: '1px solid #eaecf0', marginTop: 22, paddingTop: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <Calendar size={18} color="#991b1b" />
+            <strong style={{ fontSize: 15 }}>Scheduled Multi-Day / Holiday Closure</strong>
+          </div>
+          <p style={{ color: '#667085', margin: '4px 0 14px', fontSize: 13 }}>
+            Notify customers when closing for Dashain, Tihar, or holidays for 1, 2, or 3 days. Customers will see your polite reason and exact reopening date.
+          </p>
+
+          {isClosureActive ? (
+            <div className="admin-closure-active-card">
+              <div>
+                <div className="admin-closure-title">
+                  <AlertTriangle size={18} />
+                  <span>STORE CURRENTLY CLOSED FOR HOLIDAYS</span>
+                </div>
+                <div className="admin-closure-subtitle">
+                  <strong>Reason:</strong> {storeClosure.reason || 'Holiday closure'}
+                </div>
+                <div className="admin-closure-subtitle">
+                  <strong>Reopening on:</strong>{' '}
+                  {storeClosure.reopen_at
+                    ? new Date(storeClosure.reopen_at).toLocaleString('en-NP', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                    : 'Scheduled date'}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={cancelClosure}
+                disabled={savingClosure}
+              >
+                {savingClosure ? 'Restoring…' : 'End Closure & Reopen Now'}
+              </button>
+            </div>
+          ) : (
+            <div style={{ background: '#f8fafc', padding: 16, borderRadius: 12, border: '1px solid #e2e8f0' }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>
+                1. Select Closure Duration
+              </span>
+              <div className="admin-quick-chips">
+                {[1, 2, 3].map(days => (
+                  <button
+                    key={days}
+                    type="button"
+                    className={`admin-chip-btn ${closureDays === days && !customReopenDate ? 'active' : ''}`}
+                    onClick={() => {
+                      setClosureDays(days);
+                      setCustomReopenDate('');
+                    }}
+                  >
+                    Closed for {days} {days === 1 ? 'Day' : 'Days'}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className={`admin-chip-btn ${customReopenDate ? 'active' : ''}`}
+                  onClick={() => {
+                    const d = new Date(Date.now() + 4 * 24 * 3600 * 1000);
+                    setCustomReopenDate(d.toISOString().slice(0, 16));
+                  }}
+                >
+                  Custom Reopen Date
+                </button>
+              </div>
+
+              {customReopenDate && (
+                <div style={{ margin: '8px 0 14px' }}>
+                  <label style={{ fontSize: 12 }}>
+                    Pick exact reopening date & time:
+                    <input
+                      type="datetime-local"
+                      value={customReopenDate}
+                      onChange={e => setCustomReopenDate(e.target.value)}
+                      style={{ marginTop: 4 }}
+                    />
+                  </label>
+                </div>
+              )}
+
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#475569', display: 'block', marginTop: 10 }}>
+                2. Closure Reason (Dashain, Tihar, Maintenance)
+              </span>
+              <div className="admin-quick-chips">
+                {[
+                  'Dashain Festival Holidays 🏮',
+                  'Tihar Holidays 🪔',
+                  'Maintenance & Deep Cleaning 🛠️',
+                  'Staff Gathering & Holiday 👥'
+                ].map(r => (
+                  <button
+                    key={r}
+                    type="button"
+                    className={`admin-chip-btn ${closureReason === r ? 'active' : ''}`}
+                    onClick={() => setClosureReason(r)}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+              <input
+                value={closureReason}
+                maxLength={80}
+                onChange={e => setClosureReason(e.target.value.slice(0, 80))}
+                placeholder="Or type custom reason (e.g. Closed for Dashain)"
+                style={{ marginBottom: 12 }}
+              />
+
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => scheduleClosure(closureDays, closureReason, customReopenDate)}
+                disabled={savingClosure}
+              >
+                {savingClosure
+                  ? 'Scheduling closure…'
+                  : `Schedule Closure (${customReopenDate ? 'Custom Date' : `${closureDays} Days`})`}
+              </button>
+            </div>
+          )}
+        </div>
       </section>
 
+      {/* 4. DELIVERY CHARGE */}
       <section className="panel" style={{ padding: 20 }}>
         <div className="panel-head">
           <div>
             <h3>Delivery charge</h3>
             <small>
-              Customers are charged this amount for delivery. Pickup orders are free of delivery
-              charge.
+              Customers are charged this amount for delivery. Pickup orders are free of delivery charge.
             </small>
           </div>
         </div>
@@ -401,13 +854,13 @@ export function BusinessSettings({
         </div>
       </section>
 
+      {/* 5. PAYMENT METHODS */}
       <section className="panel" style={{ padding: 20 }}>
         <div className="panel-head">
           <div>
             <h3>Payment methods</h3>
             <small>
-              Add your own payment options, upload QR codes and choose which ones customers can
-              use.
+              Add your own payment options, upload QR codes and choose which ones customers can use.
             </small>
           </div>
         </div>
@@ -432,61 +885,107 @@ export function BusinessSettings({
           <input
             value={newInstructions}
             onChange={e => setNewInstructions(e.target.value)}
-            placeholder="Payment instructions (optional)"
+            placeholder="Instructions / note"
           />
-          <button className="btn-primary" onClick={addMethod} disabled={savingMethod}>
-            {savingMethod ? 'Adding…' : 'Add payment option'}
+          <button
+            className="btn-primary"
+            disabled={savingMethod}
+            onClick={async () => {
+              if (!newName.trim() || !newCode.trim()) {
+                setMessage('Enter both name and code for the new payment method.');
+                return;
+              }
+              const code = newCode.trim().toLowerCase().replaceAll(' ', '_');
+              setSavingMethod(true);
+              setMessage('');
+              const { data, error } = await supabase
+                .from('payment_methods')
+                .insert({
+                  code,
+                  name: newName.trim(),
+                  instructions: newInstructions.trim(),
+                  enabled: true,
+                  display_order: paymentMethods.length + 1
+                })
+                .select('code,name,instructions,qr_image_url,enabled,display_order,requires_proof')
+                .single();
+              setSavingMethod(false);
+              if (error) {
+                setMessage(`Could not add payment method: ${error.message}`);
+                return;
+              }
+              setPaymentMethods(current => [...current, data]);
+              setNewName('');
+              setNewCode('');
+              setNewInstructions('');
+              setMessage(`Payment method ${data.name} added.`);
+            }}
+          >
+            {savingMethod ? 'Adding…' : 'Add method'}
           </button>
         </div>
+
         {paymentMethods.map(method => (
           <div
             key={method.code}
             style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
               borderTop: '1px solid #eaecf0',
-              padding: '14px 0',
-              display: 'grid',
-              gridTemplateColumns: 'minmax(140px,1fr) minmax(180px,2fr) auto',
-              gap: 12,
-              alignItems: 'center'
+              padding: '12px 0',
+              gap: 12
             }}
           >
-            <div>
-              <strong>{method.name}</strong>
-              <small style={{ display: 'block', color: '#667085' }}>{method.code}</small>
-              {method.qr_image_url && (
-                <img
-                  src={method.qr_image_url}
-                  alt={`${method.name} QR`}
-                  style={{ width: 90, height: 90, objectFit: 'contain', marginTop: 8 }}
-                />
-              )}
-            </div>
-            <div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <strong>{method.name}</strong>
+                <span
+                  style={{
+                    fontSize: 10,
+                    padding: '2px 6px',
+                    borderRadius: 4,
+                    background: '#f2f4f7',
+                    color: '#475467'
+                  }}
+                >
+                  {method.code}
+                </span>
+                {method.qr_image_url && (
+                  <span
+                    style={{
+                      fontSize: 10,
+                      padding: '2px 6px',
+                      borderRadius: 4,
+                      background: '#ecfdf3',
+                      color: '#027a48'
+                    }}
+                  >
+                    QR uploaded
+                  </span>
+                )}
+              </div>
               <input
+                style={{ marginTop: 6, fontSize: 13, width: '100%', maxWidth: 420 }}
                 defaultValue={method.instructions || ''}
-                placeholder="Customer instructions"
+                placeholder="Instructions shown to customer"
                 onBlur={e => {
-                  if (e.target.value !== (method.instructions || '')) {
+                  if (e.target.value !== method.instructions) {
                     updateInstructions(method, e.target.value);
                   }
                 }}
               />
-              <label style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
+              <label className="admin-file-label" style={{ marginTop: 6, display: 'inline-block' }}>
+                {uploadingCode === method.code ? 'Uploading QR…' : 'Upload QR code image'}
                 <input
                   type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  onChange={e => uploadQr(method, e.target.files?.[0])}
-                />{' '}
-                {uploadingCode === method.code
-                  ? 'Uploading QR…'
-                  : 'Upload / replace QR (max 5 MB)'}
+                  accept="image/jpeg,image/png,image/webp"
+                  disabled={uploadingCode === method.code}
+                  onChange={e => uploadMethodQR(method, e.target.files?.[0])}
+                />
               </label>
-              {method.code === 'cash' ? (
-                <small style={{ display: 'block', marginTop: 8, color: '#667085' }}>
-                  🔒 Protected: Cash on Delivery cannot be deleted and never requires a
-                  screenshot.
-                </small>
-              ) : (
+
+              {method.qr_image_url && (
                 <label style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
                   <input
                     type="checkbox"
@@ -497,9 +996,7 @@ export function BusinessSettings({
                         .from('payment_methods')
                         .update({ requires_proof: value })
                         .eq('code', method.code)
-                        .select(
-                          'code,name,instructions,qr_image_url,enabled,display_order,requires_proof'
-                        )
+                        .select('code,name,instructions,qr_image_url,enabled,display_order,requires_proof')
                         .single();
                       if (error) {
                         setMessage(`Could not update proof requirement: ${error.message}`);
@@ -522,18 +1019,15 @@ export function BusinessSettings({
             </button>
           </div>
         ))}
-        {message && (
-          <p
-            className={
-              message.includes('successfully') || message.startsWith('Payment method added')
-                ? 'success-note'
-                : 'form-error'
-            }
-          >
-            {message}
-          </p>
-        )}
       </section>
+
+      {/* Admin Offer Modal Preview */}
+      {previewingOffer && (
+        <OfferModal
+          offer={offerForm}
+          onClose={() => setPreviewingOffer(false)}
+        />
+      )}
     </div>
   );
 }

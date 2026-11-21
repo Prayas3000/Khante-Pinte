@@ -78,7 +78,11 @@ export function AdminShell({
   onCustomer,
   onLogout,
   brandLogo,
-  setBrandLogo
+  setBrandLogo,
+  activeOffer,
+  setActiveOffer,
+  storeClosure,
+  setStoreClosure
 }) {
   const [soundActive, setSoundActive] = useState(() => isSoundEnabled());
 
@@ -391,6 +395,11 @@ export function AdminShell({
               setStoreOpen={setStoreOpen}
               brandLogo={brandLogo}
               setBrandLogo={setBrandLogo}
+              activeOffer={activeOffer}
+              setActiveOffer={setActiveOffer}
+              storeClosure={storeClosure}
+              setStoreClosure={setStoreClosure}
+              vouchers={vouchers}
             />
           )}
         </div>
