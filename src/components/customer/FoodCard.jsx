@@ -35,13 +35,16 @@ export function FoodCard({ product: p, onAdd, onOpen, cartQty }) {
           className={`add-btn ${cartQty ? 'added' : ''}`}
           disabled={p.outOfStock}
           onClick={onAdd}
+          aria-label={`Add ${p.name} to order`}
         >
-          {p.outOfStock
-            ? 'Unavailable'
-            : cartQty
-            ? `Add more · ${cartQty} in cart`
-            : 'Add to order'}
-          <Plus size={16} />
+          <span className="add-btn-text">
+            {p.outOfStock
+              ? 'Unavailable'
+              : cartQty
+              ? `${cartQty} in cart +`
+              : 'Add to order'}
+          </span>
+          <Plus size={15} className="add-btn-icon" />
         </button>
       </div>
     </article>

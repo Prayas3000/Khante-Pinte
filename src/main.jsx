@@ -12,7 +12,8 @@ import {
   ChevronRight,
   Bike,
   Wallet,
-  X
+  X,
+  ShoppingBag
 } from 'lucide-react';
 
 import {
@@ -1391,6 +1392,79 @@ function App() {
 
             <Footer brandLogo={brandLogo} storeHours={storeHours} />
           </main>
+
+          {/* Mobile Bottom Sticky Navigation Bar */}
+          <nav className="mobile-bottom-bar" aria-label="Mobile Navigation">
+            <a
+              href="#menu"
+              className="bottom-nav-item"
+              onClick={() => {
+                document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+            >
+              <span className="bottom-nav-icon">🍽️</span>
+              <span className="bottom-nav-label">Menu</span>
+            </a>
+
+            <button
+              type="button"
+              className="bottom-nav-item"
+              onClick={() => {
+                setTrackingOrderId(lastOrderId || trackingOrderId || getStore('kp_last_order_id', ''));
+                setTrackingPhone('');
+                setTrackingOpen(true);
+              }}
+            >
+              <span className="bottom-nav-icon">📦</span>
+              <span className="bottom-nav-label">Track</span>
+            </button>
+
+            <button
+              type="button"
+              className="bottom-nav-item cart-bottom-item"
+              onClick={() =>
+                storeOpen
+                  ? setCheckoutOpen(true)
+                  : setNotice('Khante Pinte is currently closed. Please order during our business hours.')
+              }
+            >
+              <div className="bottom-cart-badge-wrap">
+                <ShoppingBag size={20} />
+                {cartCount > 0 && <span className="bottom-cart-bubble">{cartCount}</span>}
+              </div>
+              <span className="bottom-nav-label">Cart</span>
+            </button>
+
+            <button
+              type="button"
+              className="bottom-nav-item"
+              onClick={() => {
+                if (customerAccount) {
+                  setAccountOpen(true);
+                } else {
+                  setCustomerAuthMode('login');
+                  setCustomerAuthOpen(true);
+                }
+              }}
+            >
+              <span className="bottom-nav-icon">
+                {customerAccount ? (
+                  <span className="bottom-nav-avatar">
+                    {customerAccount.avatarUrl ? (
+                      <img src={customerAccount.avatarUrl} alt="" />
+                    ) : (
+                      (customerAccount.name || 'K').slice(0, 1).toUpperCase()
+                    )}
+                  </span>
+                ) : (
+                  '👤'
+                )}
+              </span>
+              <span className="bottom-nav-label">
+                {customerAccount ? 'Account' : 'Login'}
+              </span>
+            </button>
+          </nav>
 
           {storeStatusLoaded && !storeOpen && !closedNoticeDismissed && (
             <div

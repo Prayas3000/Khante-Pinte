@@ -1,5 +1,5 @@
 import React from 'react';
-import { LogIn, ShoppingBag, Menu as MenuIcon, Instagram, Facebook } from 'lucide-react';
+import { LogIn, ShoppingBag, Menu as MenuIcon, X, Instagram, Facebook, ChevronRight, Package, Clock } from 'lucide-react';
 
 export function Header({
   brandLogo,
@@ -57,7 +57,7 @@ export function Header({
         <div className="header-actions">
           {customerAccount ? (
             <>
-              <button className="customer-account-trigger" onClick={onOpenAccount}>
+              <button className="customer-account-trigger" onClick={onOpenAccount} title="My Account & Orders">
                 <span className="customer-avatar-mini">
                   {customerAccount.avatarUrl ? (
                     <img src={customerAccount.avatarUrl} alt="" />
@@ -75,59 +75,195 @@ export function Header({
                 </span>
                 <span className="account-chevron">⌄</span>
               </button>
-              <button className="btn-outline customer-logout" onClick={onLogoutCustomer}>
+              <button className="btn-outline customer-logout desktop-only-btn" onClick={onLogoutCustomer}>
                 <LogIn size={16} /> Logout
               </button>
             </>
           ) : (
-            <button className="btn-outline" onClick={onOpenAuth}>
-              <LogIn size={16} /> Login
+            <button className="btn-outline header-login-btn" onClick={onOpenAuth} title="Customer Login / Sign Up">
+              <LogIn size={16} /> <span>Login</span>
             </button>
           )}
-          <button className="btn-outline" onClick={onOpenTracking}>
+
+          <button className="btn-outline desktop-only-btn" onClick={onOpenTracking} title="Track your order">
             Track order
           </button>
-          <button className="cart-button" onClick={onOpenCart}>
+
+          <button className="cart-button" onClick={onOpenCart} aria-label={`View cart, ${cartCount} items`}>
             <ShoppingBag size={18} /> <span>Cart</span>
             <b>{cartCount}</b>
           </button>
+
           <button
-            className="icon-btn mobile-menu"
+            className={`icon-btn mobile-menu ${menuOpen ? 'active' : ''}`}
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="Toggle navigation menu"
           >
-            <MenuIcon />
+            {menuOpen ? <X size={20} /> : <MenuIcon size={20} />}
           </button>
         </div>
       </header>
+
+      {/* Responsive Full-Featured Mobile Drawer */}
       {menuOpen && (
-        <div className="mobile-nav">
-          <a href="#menu" onClick={() => setMenuOpen(false)}>
-            Menu
-          </a>
-          <a href="#about" onClick={() => setMenuOpen(false)}>
-            About
-          </a>
-          <a href="#contact" onClick={() => setMenuOpen(false)}>
-            Contact
-          </a>
-          <div className="mobile-social-pills">
-            <a
-              href="https://www.instagram.com/khantepinte.biratnagar?utm_source=ig_web_button_share_sheet&dmpr=ZDNlZDc0MzIxNw=="
-              target="_blank"
-              rel="noreferrer"
-              className="mobile-social-pill insta"
-            >
-              <Instagram size={17} /> Instagram
-            </a>
-            <a
-              href="https://www.facebook.com/KhantePinte.biratnagar/"
-              target="_blank"
-              rel="noreferrer"
-              className="mobile-social-pill fb"
-            >
-              <Facebook size={17} /> Facebook
-            </a>
+        <div className="mobile-nav-backdrop" onClick={() => setMenuOpen(false)}>
+          <div className="mobile-nav" onClick={e => e.stopPropagation()}>
+            {/* Customer Account / Login Card */}
+            {customerAccount ? (
+              <div className="mobile-auth-card logged-in">
+                <div className="mobile-user-row">
+                  <span className="customer-avatar-mini large">
+                    {customerAccount.avatarUrl ? (
+                      <img src={customerAccount.avatarUrl} alt="" />
+                    ) : (
+                      (customerAccount.name || 'K').slice(0, 1).toUpperCase()
+                    )}
+                  </span>
+                  <div className="mobile-user-info">
+                    <span className="mobile-auth-eyebrow">SIGNED IN</span>
+                    <strong>{customerAccount.name || 'Food lover'}</strong>
+                    <small>{customerAccount.email || customerAccount.phone || ''}</small>
+                  </div>
+                </div>
+                <div className="mobile-auth-actions">
+                  <button
+                    className="btn-primary"
+                    style={{ flex: 1, padding: '10px 14px', fontSize: 13 }}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onOpenAccount();
+                    }}
+                  >
+                    My Account & Orders
+                  </button>
+                  <button
+                    className="btn-outline"
+                    style={{ padding: '10px 14px', fontSize: 13, color: '#b42318' }}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onLogoutCustomer();
+                    }}
+                  >
+                    Logout
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="mobile-auth-card">
+                <div className="mobile-auth-copy">
+                  <span className="mobile-auth-badge">WELCOME TO KHANTE PINTE 🍲</span>
+                  <strong>Login or Sign Up</strong>
+                  <p>Track your orders, view order history, and save delivery addresses in Biratnagar.</p>
+                </div>
+                <button
+                  className="btn-primary full"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onOpenAuth();
+                  }}
+                >
+                  <LogIn size={16} /> Login / Create Account
+                </button>
+              </div>
+            )}
+
+            {/* Quick Navigation Items */}
+            <div className="mobile-nav-links">
+              <button
+                className="mobile-nav-link-btn"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onOpenTracking();
+                }}
+              >
+                <span className="mobile-nav-icon">📦</span>
+                <div>
+                  <strong>Track Your Order</strong>
+                  <small>Check live kitchen and rider status</small>
+                </div>
+                <ChevronRight size={18} className="mobile-link-chevron" />
+              </button>
+
+              <button
+                className="mobile-nav-link-btn"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onOpenCart();
+                }}
+              >
+                <span className="mobile-nav-icon">🛒</span>
+                <div>
+                  <strong>Your Cart ({cartCount} {cartCount === 1 ? 'item' : 'items'})</strong>
+                  <small>Review items and proceed to checkout</small>
+                </div>
+                <ChevronRight size={18} className="mobile-link-chevron" />
+              </button>
+
+              <a
+                href="#menu"
+                className="mobile-nav-link-btn"
+                onClick={() => setMenuOpen(false)}
+              >
+                <span className="mobile-nav-icon">🍽️</span>
+                <div>
+                  <strong>Explore Full Menu (176+ Items)</strong>
+                  <small>Momo, Biryani, Chowmein, Curries, Pizza & more</small>
+                </div>
+                <ChevronRight size={18} className="mobile-link-chevron" />
+              </a>
+
+              <a
+                href="#about"
+                className="mobile-nav-link-btn"
+                onClick={() => setMenuOpen(false)}
+              >
+                <span className="mobile-nav-icon">🌙</span>
+                <div>
+                  <strong>About Khante Pinte</strong>
+                  <small>Buspark, Biratnagar · Night delivery</small>
+                </div>
+                <ChevronRight size={18} className="mobile-link-chevron" />
+              </a>
+
+              <a
+                href="#contact"
+                className="mobile-nav-link-btn"
+                onClick={() => setMenuOpen(false)}
+              >
+                <span className="mobile-nav-icon">📞</span>
+                <div>
+                  <strong>Contact & Phone Support</strong>
+                  <small>Direct phone & WhatsApp hotline</small>
+                </div>
+                <ChevronRight size={18} className="mobile-link-chevron" />
+              </a>
+            </div>
+
+            {/* Social Links */}
+            <div className="mobile-social-pills">
+              <a
+                href="https://www.instagram.com/khantepinte.biratnagar?utm_source=ig_web_button_share_sheet&dmpr=ZDNlZDc0MzIxNw=="
+                target="_blank"
+                rel="noreferrer"
+                className="mobile-social-pill insta"
+              >
+                <Instagram size={17} /> Instagram
+              </a>
+              <a
+                href="https://www.facebook.com/KhantePinte.biratnagar/"
+                target="_blank"
+                rel="noreferrer"
+                className="mobile-social-pill fb"
+              >
+                <Facebook size={17} /> Facebook
+              </a>
+            </div>
+
+            {/* Store Hours Badge */}
+            <div className="mobile-store-status">
+              <Clock size={15} style={{ color: '#16a34a' }} />
+              <span>Night delivery daily: <strong>9:00 PM – 4:00 AM (NPT)</strong></span>
+            </div>
           </div>
         </div>
       )}
