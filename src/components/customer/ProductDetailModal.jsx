@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, Check, ShoppingBag } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { currency, sanitizePlainText } from '@/utils/formatters';
 
-export function ProductDetailModal({ product, onClose, onAdd, account, onSignUp }) {
+export function ProductDetailModal({ product, onClose, onAdd, cartQty = 0, onViewCart, account, onSignUp }) {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [rating, setRating] = useState(5);
@@ -13,6 +13,15 @@ export function ProductDetailModal({ product, onClose, onAdd, account, onSignUp 
   const [signedIn, setSignedIn] = useState(false);
   const [userId, setUserId] = useState('');
   const [customerName, setCustomerName] = useState(account?.name || '');
+  const [justAdded, setJustAdded] = useState(false);
+
+  const handleAdd = () => {
+    onAdd();
+    setJustAdded(true);
+    setTimeout(() => {
+      setJustAdded(false);
+    }, 2500);
+  };
 
   const loadReviews = async () => {
     setLoading(true);
@@ -115,14 +124,84 @@ export function ProductDetailModal({ product, onClose, onAdd, account, onSignUp 
             <h2>{product.name}</h2>
             <strong className="product-detail-price">{currency(product.price)}</strong>
             <p>{product.description || 'Freshly prepared by Khante Pinte.'}</p>
-            <button
-              className="btn-primary"
-              disabled={product.outOfStock}
-              onClick={onAdd}
-            >
-              {product.outOfStock ? 'Currently unavailable' : 'Add to order'}{' '}
-              <Plus size={16} />
-            </button>
+            <div className="product-detail-actions" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', marginTop: '14px' }}>
+              <button
+                type="button"
+                className={`btn-primary product-detail-add-btn ${cartQty > 0 || justAdded ? 'added' : ''}`}
+                disabled={product.outOfStock}
+                onClick={handleAdd}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '12px 20px',
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  borderRadius: '12px',
+                  transition: 'all 0.2s ease',
+                  backgroundColor: (cartQty > 0 || justAdded) ? '#1f421a' : undefined,
+                  color: (cartQty > 0 || justAdded) ? '#b9ed75' : undefined,
+                  border: (cartQty > 0 || justAdded) ? '1px solid #4a7c2e' : undefined
+                }}
+              >
+                {product.outOfStock ? (
+                  'Currently unavailable'
+                ) : justAdded ? (
+                  <>
+                    <Check size={18} /> Added to cart ({cartQty} in cart) +
+                  </>
+                ) : cartQty > 0 ? (
+                  <>
+                    <Check size={18} /> {cartQty} in cart · Add more +
+                  </>
+                ) : (
+                  <>
+                    <Plus size={18} /> Add to order
+                  </>
+                )}
+              </button>
+
+              {cartQty > 0 && onViewCart && (
+                <button
+                  type="button"
+                  className="btn-outline product-detail-view-cart-btn"
+                  onClick={onViewCart}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '7px',
+                    padding: '11px 16px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    borderRadius: '12px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <ShoppingBag size={16} /> View Cart ({cartQty})
+                </button>
+              )}
+            </div>
+
+            {justAdded && (
+              <div
+                className="product-detail-toast-alert"
+                style={{
+                  marginTop: '10px',
+                  padding: '10px 14px',
+                  borderRadius: '10px',
+                  background: '#eef9e4',
+                  color: '#26541b',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  border: '1px solid #c7e8a9'
+                }}
+              >
+                <span>✓</span> Added to your cart! You can continue browsing or tap View Cart.
+              </div>
+            )}
           </div>
           <section className="product-reviews">
             <div className="reviews-heading">

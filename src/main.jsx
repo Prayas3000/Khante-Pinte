@@ -518,6 +518,12 @@ function App() {
   const [selectedProduct, setSelectedProduct] = useState(null);
 
   useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(''), 3500);
+    return () => clearTimeout(timer);
+  }, [notice]);
+
+  useEffect(() => {
     if (storeOpen) setClosedNoticeDismissed(false);
   }, [storeOpen]);
 
@@ -552,6 +558,7 @@ function App() {
         ? c.map(x => (x.id === p.id ? { ...x, qty: x.qty + 1 } : x))
         : [...c, { ...p, qty: 1 }];
     });
+    setNotice(`✓ Added ${p.name} to cart!`);
   };
 
   const changeQty = (id, d) => {
@@ -1836,6 +1843,11 @@ function App() {
               product={selectedProduct}
               onClose={() => setSelectedProduct(null)}
               onAdd={() => add(selectedProduct)}
+              cartQty={cart.find(x => x.id === selectedProduct.id)?.qty || 0}
+              onViewCart={() => {
+                setSelectedProduct(null);
+                setCartOpen(true);
+              }}
               account={customerAccount}
               onSignUp={() => {
                 setSelectedProduct(null);
