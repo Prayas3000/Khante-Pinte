@@ -301,42 +301,51 @@ function App() {
         return;
       }
 
-      const { data: adminRow, error: adminLookupError } = await supabase
-        .from('admin_users')
-        .select('user_id')
-        .eq('user_id', session.user.id)
-        .maybeSingle();
+      const user = session.user;
+      const metadata = user.user_metadata || {};
 
-      if (!active) return;
-      if (adminLookupError || adminRow) {
-        setCustomerAccount(null);
-        saveStore('kp_customer_session', null);
-        return;
-      }
-
-      const metadata = session.user.user_metadata || {};
       let customerProfile = null;
-      if (metadata.account_type !== 'customer') {
+      try {
         const { data, error } = await supabase
           .from('customers')
-          .select('name,phone,avatar_url')
-          .eq('auth_user_id', session.user.id)
+          .select('name, phone, avatar_url')
+          .eq('auth_user_id', user.id)
           .maybeSingle();
 
-        if (!active) return;
-        if (error || !data) {
-          setCustomerAccount(null);
-          saveStore('kp_customer_session', null);
-          return;
+        if (!error && data) {
+          customerProfile = data;
+        } else if (!data) {
+          // Auto-upsert profile row if missing
+          const defaultName = metadata.full_name || metadata.name || user.email?.split('@')[0] || 'Food lover';
+          const defaultPhone = metadata.phone || '';
+          const { data: createdProfile } = await supabase
+            .from('customers')
+            .upsert(
+              {
+                auth_user_id: user.id,
+                name: defaultName,
+                phone: defaultPhone
+              },
+              { onConflict: 'auth_user_id' }
+            )
+            .select('name, phone, avatar_url')
+            .maybeSingle();
+
+          if (createdProfile) {
+            customerProfile = createdProfile;
+          }
         }
-        customerProfile = data;
+      } catch (err) {
+        console.warn('Customer profile sync notice:', err);
       }
 
+      if (!active) return;
+
       const account = {
-        name: customerProfile?.name || metadata.full_name || metadata.name || 'Food lover',
-        email: session.user.email || '',
+        name: customerProfile?.name || metadata.full_name || metadata.name || user.email?.split('@')[0] || 'Food lover',
+        email: user.email || '',
         phone: customerProfile?.phone || metadata.phone || '',
-        userId: session.user.id,
+        userId: user.id,
         avatarUrl: customerProfile?.avatar_url || metadata.avatar_url || ''
       };
       setCustomerAccount(account);
@@ -371,7 +380,7 @@ function App() {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [customerAuthOpen, setCustomerAuthOpen] = useState(false);
   const [customerAuthMode, setCustomerAuthMode] = useState('login');
-  const [customerAccount, setCustomerAccount] = useState(null);
+  const [customerAccount, setCustomerAccount] = useState(() => getStore('kp_customer_session', null));
   const [accountOpen, setAccountOpen] = useState(false);
   const [trackingOrderId, setTrackingOrderId] = useState(() => getStore('kp_last_order_id', ''));
   const [trackingPhone, setTrackingPhone] = useState('');

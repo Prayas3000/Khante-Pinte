@@ -39,7 +39,7 @@ export function CustomerAuth({ mode, setMode, onClose, onAuth, onGoogle }) {
     setError('');
     setSuccess('');
     if (!email.trim() || !password || (mode === 'signup' && (!name.trim() || !phone.trim()))) {
-      setError(mode === 'signup' ? 'Please complete all fields.' : 'Enter your email and password.');
+      setError(mode === 'signup' ? 'Please complete all fields.' : 'Enter your email or phone and password.');
       return;
     }
     if (mode === 'signup' && phone.replace(/\D/g, '').length !== 10) {
@@ -59,7 +59,18 @@ export function CustomerAuth({ mode, setMode, onClose, onAuth, onGoogle }) {
           options: { data: { full_name: name.trim(), phone: phone.trim(), account_type: 'customer' } }
         });
         if (authError) throw authError;
+
         if (data.session) {
+          // Immediately upsert customer profile
+          await supabase.from('customers').upsert(
+            {
+              auth_user_id: data.user.id,
+              name: name.trim(),
+              phone: phone.trim()
+            },
+            { onConflict: 'auth_user_id' }
+          );
+
           onAuth({
             name: name.trim(),
             email: email.trim(),
@@ -68,28 +79,57 @@ export function CustomerAuth({ mode, setMode, onClose, onAuth, onGoogle }) {
             avatarUrl: ''
           });
         } else {
-          setSuccess('Account created. Check your email to confirm your account, then log in.');
+          setSuccess('Account created! Please check your email to confirm your account, then log in.');
         }
       } else {
+        let loginIdentifier = email.trim();
+        const digitsOnly = loginIdentifier.replace(/\D/g, '');
+
+        // If user entered a 10-digit phone number instead of email
+        if (digitsOnly.length === 10 && !loginIdentifier.includes('@')) {
+          const { data: lookedUpEmail, error: lookupErr } = await supabase.rpc('lookup_email_by_phone', {
+            p_phone: digitsOnly
+          });
+          if (lookedUpEmail) {
+            loginIdentifier = lookedUpEmail;
+          } else {
+            throw new Error('No account found for this phone number. Please enter your email or sign up.');
+          }
+        }
+
         const { data, error: authError } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
+          email: loginIdentifier,
           password
         });
         if (authError) throw authError;
+
+        // Fetch or create customer profile
+        let customerData = null;
+        if (data.user?.id) {
+          const { data: prof } = await supabase
+            .from('customers')
+            .select('name, phone, avatar_url')
+            .eq('auth_user_id', data.user.id)
+            .maybeSingle();
+          customerData = prof;
+        }
+
         const metadata = data.user?.user_metadata || {};
         onAuth({
-          name: metadata.full_name || metadata.name || 'Food lover',
-          email: data.user?.email || email.trim(),
-          phone: metadata.phone || '',
+          name: customerData?.name || metadata.full_name || metadata.name || data.user?.email?.split('@')[0] || 'Food lover',
+          email: data.user?.email || loginIdentifier,
+          phone: customerData?.phone || metadata.phone || '',
           userId: data.user?.id,
-          avatarUrl: metadata.avatar_url || ''
+          avatarUrl: customerData?.avatar_url || metadata.avatar_url || ''
         });
       }
     } catch (authError) {
       const message = authError.message || 'Could not complete sign in.';
       setError(
         message.toLowerCase().includes('invalid login credentials')
-          ? 'Incorrect email or password.'
+          ? 'Incorrect email/phone or password.'
+          : message.toLowerCase().includes('email not confirmed')
+          ? 'Your email is not confirmed yet. Please check your inbox or spam folder.'
           : message
       );
     } finally {
@@ -111,15 +151,15 @@ export function CustomerAuth({ mode, setMode, onClose, onAuth, onGoogle }) {
         </div>
         <div className="checkout-scroll">
           <label>
-            Email address
+            {mode === 'login' ? 'Email address or 10-digit phone number' : 'Email address'}
             <input
-              type="email"
+              type={mode === 'login' ? 'text' : 'email'}
               value={email}
               onChange={e => {
                 setEmail(e.target.value);
                 setError('');
               }}
-              placeholder="you@example.com"
+              placeholder={mode === 'login' ? 'you@example.com or 98XXXXXXXX' : 'you@example.com'}
             />
           </label>
           {!forgotMode && mode === 'signup' && (
