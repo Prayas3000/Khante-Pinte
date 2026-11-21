@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { currency } from '@/utils/formatters';
+import { currency, sanitizePlainText } from '@/utils/formatters';
 
 export function CustomerAccountPanel({ account, onClose, onUpdated }) {
   const [profile, setProfile] = useState({
@@ -104,9 +104,14 @@ export function CustomerAccountPanel({ account, onClose, onUpdated }) {
   const saveProfile = async () => {
     setError('');
     setMessage('');
+    const cleanName = sanitizePlainText(profile.name, 50);
     const digits = profile.phone.replace(/\D/g, '');
-    if (!profile.name.trim()) {
-      setError('Please enter your name.');
+    if (!cleanName || cleanName.length < 3) {
+      setError('Please enter your full name (at least 3 characters).');
+      return;
+    }
+    if (cleanName.length > 50) {
+      setError('Name cannot exceed 50 characters.');
       return;
     }
     if (digits.length !== 10) {
@@ -116,19 +121,20 @@ export function CustomerAccountPanel({ account, onClose, onUpdated }) {
     setSaving(true);
     const { error: updateError } = await supabase
       .from('customers')
-      .update({ name: profile.name.trim(), phone: digits })
+      .update({ name: cleanName, phone: digits })
       .eq('id', profile.id);
 
     if (!updateError) {
       const { error: metaError } = await supabase.auth.updateUser({
-        data: { full_name: profile.name.trim(), phone: digits }
+        data: { full_name: cleanName, phone: digits }
       });
       if (metaError) {
         setError(`Profile saved, but account details could not sync: ${metaError.message}`);
       } else {
         setMessage('Your profile has been updated.');
       }
-      onUpdated({ name: profile.name.trim(), phone: digits });
+      setProfile(p => ({ ...p, name: cleanName, phone: digits }));
+      onUpdated({ name: cleanName, phone: digits });
     } else {
       setError(updateError.message);
     }
@@ -185,8 +191,14 @@ export function CustomerAccountPanel({ account, onClose, onUpdated }) {
   const addAddress = async () => {
     setError('');
     setMessage('');
-    if (!addressText.trim()) {
+    const cleanAddress = sanitizePlainText(addressText, 100);
+    const cleanLabel = sanitizePlainText(addressLabel, 20) || 'Home';
+    if (!cleanAddress) {
       setError('Please enter your address.');
+      return;
+    }
+    if (cleanAddress.length > 100) {
+      setError('Address cannot exceed 100 characters.');
       return;
     }
     setSaving(true);
@@ -200,8 +212,8 @@ export function CustomerAccountPanel({ account, onClose, onUpdated }) {
       .from('customer_addresses')
       .insert({
         customer_id: profile.id,
-        label: addressLabel.trim() || 'Other',
-        address: addressText.trim(),
+        label: cleanLabel,
+        address: cleanAddress,
         is_default: addresses.length === 0
       })
       .select('id,label,address,is_default,created_at')
@@ -476,7 +488,8 @@ export function CustomerAccountPanel({ account, onClose, onUpdated }) {
                       Label
                       <input
                         value={addressLabel}
-                        onChange={e => setAddressLabel(e.target.value)}
+                        maxLength={20}
+                        onChange={e => setAddressLabel(e.target.value.slice(0, 20))}
                         placeholder="Home, Work…"
                       />
                     </label>
@@ -484,10 +497,14 @@ export function CustomerAccountPanel({ account, onClose, onUpdated }) {
                       Full address
                       <textarea
                         value={addressText}
-                        onChange={e => setAddressText(e.target.value)}
+                        maxLength={100}
+                        onChange={e => setAddressText(e.target.value.slice(0, 100))}
                         rows={3}
                         placeholder="House, street, area and nearby landmark"
                       />
+                      <small style={{ display: 'block', textAlign: 'right', color: '#667085', fontSize: 11, marginTop: 2 }}>
+                        {addressText.length}/100 characters
+                      </small>
                     </label>
                     <button className="btn-primary" disabled={saving} onClick={addAddress}>
                       Save address
@@ -504,9 +521,12 @@ export function CustomerAccountPanel({ account, onClose, onUpdated }) {
                       Full name
                       <input
                         value={profile.name}
+                        minLength={3}
+                        maxLength={50}
                         onChange={e =>
-                          setProfile(p => ({ ...p, name: e.target.value }))
+                          setProfile(p => ({ ...p, name: e.target.value.slice(0, 50) }))
                         }
+                        placeholder="Your full name (3-50 characters)"
                       />
                     </label>
                     <label>

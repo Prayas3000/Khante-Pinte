@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { sanitizePlainText } from '@/utils/formatters';
 
 export function CustomerAuth({ mode, setMode, onClose, onAuth, onGoogle }) {
   const [name, setName] = useState('');
@@ -109,13 +110,24 @@ export function CustomerAuth({ mode, setMode, onClose, onAuth, onGoogle }) {
   const submit = async () => {
     setError('');
     setSuccess('');
-    if (!email.trim() || !password || (mode === 'signup' && (!name.trim() || !phone.trim()))) {
+    const cleanName = sanitizePlainText(name, 50);
+    if (!email.trim() || !password || (mode === 'signup' && (!cleanName || !phone.trim()))) {
       setError(mode === 'signup' ? 'Please complete all fields.' : 'Enter your email or phone and password.');
       return;
     }
-    if (mode === 'signup' && phone.replace(/\D/g, '').length !== 10) {
-      setError('Phone number must be exactly 10 digits.');
-      return;
+    if (mode === 'signup') {
+      if (cleanName.length < 3) {
+        setError('Full name must be at least 3 characters.');
+        return;
+      }
+      if (cleanName.length > 50) {
+        setError('Full name cannot exceed 50 characters.');
+        return;
+      }
+      if (phone.replace(/\D/g, '').length !== 10) {
+        setError('Phone number must be exactly 10 digits.');
+        return;
+      }
     }
     if (password.length < 6) {
       setError('Password must be at least 6 characters long.');
@@ -127,7 +139,7 @@ export function CustomerAuth({ mode, setMode, onClose, onAuth, onGoogle }) {
         const { data, error: authError } = await supabase.auth.signUp({
           email: email.trim(),
           password,
-          options: { data: { full_name: name.trim(), phone: phone.trim(), account_type: 'customer' } }
+          options: { data: { full_name: cleanName, phone: phone.trim(), account_type: 'customer' } }
         });
         if (authError) throw authError;
 
@@ -136,14 +148,14 @@ export function CustomerAuth({ mode, setMode, onClose, onAuth, onGoogle }) {
           await supabase.from('customers').upsert(
             {
               auth_user_id: data.user.id,
-              name: name.trim(),
+              name: cleanName,
               phone: phone.trim()
             },
             { onConflict: 'auth_user_id' }
           );
 
           onAuth({
-            name: name.trim(),
+            name: cleanName,
             email: email.trim(),
             phone: phone.trim(),
             userId: data.user?.id,
@@ -239,8 +251,11 @@ export function CustomerAuth({ mode, setMode, onClose, onAuth, onGoogle }) {
                 Full name
                 <input
                   value={name}
-                  onChange={e => setName(e.target.value)}
-                  placeholder="Your name"
+                  onChange={e => setName(e.target.value.slice(0, 50))}
+                  placeholder="Your full name (3-50 letters)"
+                  minLength={3}
+                  maxLength={50}
+                  required
                 />
               </label>
               <label>

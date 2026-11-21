@@ -24,7 +24,8 @@ import {
   businessDate,
   formatDbOrder,
   uiToDbStatus,
-  dbToUiStatus
+  dbToUiStatus,
+  sanitizePlainText
 } from '@/utils/formatters';
 import { playNewOrderChime } from '@/utils/audioChime';
 
@@ -611,9 +612,9 @@ function App() {
     const orderSource = source === 'Phone' ? 'phone' : source === 'Website' ? 'website' : 'walkin';
     const orderType = (details.type || 'Delivery').toLowerCase();
     const payload = {
-      customer_name: details.customer || 'Walk-in',
-      customer_phone: details.phone || '',
-      delivery_address: details.address || null,
+      customer_name: sanitizePlainText(details.customer, 50) || 'Walk-in',
+      customer_phone: (details.phone || '').replace(/\D/g, '').slice(0, 10),
+      delivery_address: sanitizePlainText(details.address, 100) || null,
       order_type: orderType === 'pickup' ? 'pickup' : 'delivery',
       order_source: orderSource,
       status: 'pending',
@@ -621,7 +622,7 @@ function App() {
       discount: Number(details.discount || 0),
       delivery_fee: Number(details.delivery || 0),
       total: Number(details.total || 0),
-      notes: details.note || '',
+      notes: sanitizePlainText(details.note, 200) || '',
       payment_method: details.paymentMethod || 'cash',
       payment_status: details.paymentStatus || 'unpaid',
       rider_id: null,
@@ -723,10 +724,15 @@ function App() {
           });
         if (proofUploadError) throw proofUploadError;
       }
+      const cleanCustomerName = sanitizePlainText(form.name, 50);
+      const cleanAddress = sanitizePlainText(form.address, 100);
+      const cleanRecipientName = sanitizePlainText(form.recipientName, 50);
+      const cleanNote = sanitizePlainText(form.note, 200);
+
       const { data, error } = await supabase.rpc('create_website_order', {
-        p_customer_name: form.name.trim(),
+        p_customer_name: cleanCustomerName,
         p_customer_phone: form.phone.trim(),
-        p_delivery_address: form.address.trim() || null,
+        p_delivery_address: cleanAddress || null,
         p_order_type: form.type.toLowerCase(),
         p_items: cart.map(item => ({
           id: item.id,
@@ -734,13 +740,14 @@ function App() {
         })),
         p_notes: [
           form.gift
-            ? `GIFT ORDER — Recipient: ${form.recipientName}; recipient phone: ${form.recipientPhone}; delivery address: ${form.address}`
+            ? `GIFT ORDER — Recipient: ${cleanRecipientName}; recipient phone: ${form.recipientPhone}; delivery address: ${cleanAddress}`
             : '',
           form.contactPhone ? `CUSTOMER CALLBACK NUMBER: ${form.contactPhone}` : '',
-          form.note ? `Customer note: ${form.note}` : ''
+          cleanNote ? `Customer note: ${cleanNote}` : ''
         ]
           .filter(Boolean)
-          .join(' | '),
+          .join(' | ')
+          .slice(0, 500),
         p_payment_method: form.paymentMethod || 'cash',
         p_payment_proof_path: paymentProofPath,
         p_voucher_code: appliedVoucher?.code || null

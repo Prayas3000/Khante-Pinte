@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, Plus } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { currency } from '@/utils/formatters';
+import { currency, sanitizePlainText } from '@/utils/formatters';
 
 export function ProductDetailModal({ product, onClose, onAdd, account, onSignUp }) {
   const [reviews, setReviews] = useState([]);
@@ -46,8 +46,13 @@ export function ProductDetailModal({ product, onClose, onAdd, account, onSignUp 
       setMessage('Create an account or log in to write a review.');
       return;
     }
-    if (reviewText.trim().length < 3) {
+    const cleanReview = sanitizePlainText(reviewText, 300);
+    if (!cleanReview || cleanReview.length < 3) {
       setMessage('Please write at least 3 characters.');
+      return;
+    }
+    if (cleanReview.length > 300) {
+      setMessage('Review cannot exceed 300 characters.');
       return;
     }
     setSaving(true);
@@ -64,7 +69,7 @@ export function ProductDetailModal({ product, onClose, onAdd, account, onSignUp 
         customer_name:
           profile?.name || account?.name || customerName || 'Khante Pinte customer',
         rating,
-        review: reviewText.trim(),
+        review: cleanReview,
         updated_at: new Date().toISOString()
       },
       { onConflict: 'menu_item_id,user_id' }
@@ -169,11 +174,14 @@ export function ProductDetailModal({ product, onClose, onAdd, account, onSignUp 
                   </label>
                   <textarea
                     value={reviewText}
-                    onChange={e => setReviewText(e.target.value)}
+                    onChange={e => setReviewText(e.target.value.slice(0, 300))}
                     rows={4}
-                    maxLength={1200}
-                    placeholder="Tell others what you thought…"
+                    maxLength={300}
+                    placeholder="Tell others what you thought (3-300 characters)…"
                   />
+                  <small style={{ display: 'block', textAlign: 'right', color: '#667085', fontSize: 12, marginTop: 4 }}>
+                    {reviewText.length}/300 characters
+                  </small>
                   <button
                     className="btn-primary"
                     disabled={saving}

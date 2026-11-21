@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Search, Plus, Minus, ChevronRight } from 'lucide-react';
-import { currency } from '@/utils/formatters';
+import { currency, sanitizePlainText } from '@/utils/formatters';
 import { ReceiptModal } from '@/components/admin/ReceiptModal';
 
 export function POS({ products, newOrder, riders, paymentMethods, deliveryFee }) {
@@ -66,7 +66,8 @@ export function POS({ products, newOrder, riders, paymentMethods, deliveryFee })
           Customer
           <input
             value={customer}
-            onChange={e => setCustomer(e.target.value)}
+            maxLength={50}
+            onChange={e => setCustomer(e.target.value.slice(0, 50))}
             placeholder="Name / Walk-in"
           />
         </label>
@@ -92,7 +93,8 @@ export function POS({ products, newOrder, riders, paymentMethods, deliveryFee })
             Address
             <textarea
               value={address}
-              onChange={e => setAddress(e.target.value)}
+              maxLength={100}
+              onChange={e => setAddress(e.target.value.slice(0, 100))}
               placeholder="Delivery address"
             />
           </label>
@@ -194,9 +196,9 @@ export function POS({ products, newOrder, riders, paymentMethods, deliveryFee })
             setSubmitting(true);
             try {
               const orderPayload = {
-                customer: customer || 'Phone customer',
-                phone,
-                address,
+                customer: sanitizePlainText(customer, 50) || 'Phone customer',
+                phone: phone.replace(/\D/g, '').slice(0, 10),
+                address: sanitizePlainText(address, 100),
                 type,
                 items: cart,
                 subtotal,

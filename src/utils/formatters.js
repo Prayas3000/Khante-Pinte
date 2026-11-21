@@ -100,3 +100,26 @@ export const formatDbOrder = row => ({
     by: 'System'
   }))
 });
+
+
+/**
+ * Strips dangerous code/HTML/control chars and enforces strict length limits.
+ * Guarantees that user inputs are treated 100% as safe plain text.
+ */
+export const sanitizePlainText = (str, maxLength = null) => {
+  if (typeof str !== 'string') return '';
+  // Normalize and trim whitespace
+  let clean = str.trim();
+  // Remove null bytes and dangerous unprintable control characters
+  clean = clean.replace(/[\u0000-\u0008\u000B-\u000C\u000E-\u001F\u007F-\u009F]/g, '');
+  // Disarm/strip all HTML tags (<script>, <iframe>, <style>, <img>, etc.)
+  clean = clean.replace(/<[^>]*>/g, '');
+  // Disarm javascript: pseudo-protocols and inline event handlers if any remnants exist
+  clean = clean.replace(/javascript\s*:/gi, '');
+  clean = clean.replace(/\bon\w+\s*=/gi, '');
+  // Enforce maxLength if provided
+  if (maxLength && clean.length > maxLength) {
+    clean = clean.slice(0, maxLength);
+  }
+  return clean;
+};

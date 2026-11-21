@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, ChevronRight, Bike, Store, Check } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { currency } from '@/utils/formatters';
+import { currency, sanitizePlainText } from '@/utils/formatters';
 
 export function Checkout({
   account,
@@ -99,16 +99,23 @@ export function Checkout({
   }, [isGift]);
 
   const placeOrder = async () => {
-    const orderName = isGift ? recipientName : name;
+    const rawOrderName = isGift ? recipientName : name;
     const orderPhone = isGift ? recipientPhone : phone;
-    const orderAddress = isGift ? recipientAddress : address;
+    const rawOrderAddress = isGift ? recipientAddress : address;
     const callbackDigits = useAlternateContact ? alternateContact.replace(/\D/g, '') : '';
     const phoneDigits = String(orderPhone).replace(/\D/g, '');
     const validationErrors = [];
 
-    if (!orderName.trim()) {
-      validationErrors.push(isGift ? 'Please enter the recipient’s name.' : 'Please enter your name.');
+    const orderName = sanitizePlainText(rawOrderName, 50);
+    const orderAddress = sanitizePlainText(rawOrderAddress, 100);
+    const cleanNote = sanitizePlainText(note, 200);
+
+    if (!orderName || orderName.length < 3) {
+      validationErrors.push(isGift ? 'Recipient’s name must be at least 3 characters.' : 'Please enter your full name (at least 3 characters).');
+    } else if (orderName.length > 50) {
+      validationErrors.push(isGift ? 'Recipient’s name cannot exceed 50 characters.' : 'Name cannot exceed 50 characters.');
     }
+
     if (!phoneDigits) {
       validationErrors.push(isGift ? 'Please enter the recipient’s phone number.' : 'Please enter your phone number.');
     } else if (phoneDigits.length !== 10) {
@@ -117,8 +124,12 @@ export function Checkout({
     if (useAlternateContact && callbackDigits.length !== 10) {
       validationErrors.push('The alternate contact number must be exactly 10 digits.');
     }
-    if (type === 'Delivery' && !orderAddress.trim()) {
-      validationErrors.push('Please enter your delivery address.');
+    if (type === 'Delivery') {
+      if (!orderAddress) {
+        validationErrors.push('Please enter your delivery address.');
+      } else if (orderAddress.length > 100) {
+        validationErrors.push('Delivery address cannot exceed 100 characters.');
+      }
     }
     if (validationErrors.length) {
       setError(validationErrors.join(' '));
@@ -145,17 +156,17 @@ export function Checkout({
         : phoneDigits;
 
       await onSubmit({
-        name: isGift && account?.userId ? name : orderName,
+        name: isGift && account?.userId ? sanitizePlainText(name, 50) : orderName,
         phone: isGift && account?.userId ? phone : orderPhone,
         address: orderAddress,
         contactPhone: callbackPhone,
         gift: isGift,
-        recipientName: isGift ? recipientName : '',
+        recipientName: isGift ? orderName : '',
         recipientPhone: isGift ? recipientPhone : '',
         type,
         paymentMethod,
         paymentProof,
-        note
+        note: cleanNote
       });
 
       if (
@@ -335,8 +346,11 @@ export function Checkout({
                 Customer name
                 <input
                   value={name}
-                  onChange={e => setName(e.target.value)}
+                  onChange={e => setName(e.target.value.slice(0, 50))}
                   placeholder="Your name"
+                  minLength={3}
+                  maxLength={50}
+                  required
                 />
               </label>
               <label>
@@ -365,8 +379,11 @@ export function Checkout({
                   Recipient’s name
                   <input
                     value={recipientName}
-                    onChange={e => setRecipientName(e.target.value)}
+                    onChange={e => setRecipientName(e.target.value.slice(0, 50))}
                     placeholder="Full name"
+                    minLength={3}
+                    maxLength={50}
+                    required
                   />
                 </label>
                 <label>
@@ -434,12 +451,18 @@ export function Checkout({
               <label className="full-label">
                 {isGift ? 'Recipient’s delivery address' : 'Delivery address'}
                 {isGift ? (
-                  <textarea
-                    rows="3"
-                    value={recipientAddress}
-                    onChange={e => setRecipientAddress(e.target.value)}
-                    placeholder="Recipient’s area, street, house and nearby landmark…"
-                  />
+                  <>
+                    <textarea
+                      rows="3"
+                      value={recipientAddress}
+                      maxLength={100}
+                      onChange={e => setRecipientAddress(e.target.value.slice(0, 100))}
+                      placeholder="Recipient’s area, street, house and nearby landmark…"
+                    />
+                    <small style={{ display: 'block', textAlign: 'right', color: '#667085', fontSize: 11, marginTop: 2 }}>
+                      {recipientAddress.length}/100 characters
+                    </small>
+                  </>
                 ) : (
                   <>
                     {account?.userId && savedAddresses.length > 0 && (
@@ -468,23 +491,27 @@ export function Checkout({
                         <textarea
                           rows="3"
                           value={address}
+                          maxLength={100}
                           onChange={e => {
-                            setAddress(e.target.value);
+                            setAddress(e.target.value.slice(0, 100));
                             setSelectedAddressId('new');
                           }}
                           placeholder="Area, street, landmark, house..."
                         />
-                        {account?.userId && (
-                          <label className="checkout-save-address">
-                            <input
-                              type="checkbox"
-                              checked={saveNewAddress}
-                              onChange={e => setSaveNewAddress(e.target.checked)}
-                            />{' '}
-                            Save this location to my account for next time
-                          </label>
-                        )}
+                        <small style={{ display: 'block', textAlign: 'right', color: '#667085', fontSize: 11, marginTop: 2 }}>
+                          {address.length}/100 characters
+                        </small>
                       </>
+                    )}
+                    {account?.userId && (
+                      <label className="checkout-save-address">
+                        <input
+                          type="checkbox"
+                          checked={saveNewAddress}
+                          onChange={e => setSaveNewAddress(e.target.checked)}
+                        />{' '}
+                        Save this location to my account for next time
+                      </label>
                     )}
                   </>
                 )}
@@ -563,9 +590,13 @@ export function Checkout({
             <textarea
               rows="2"
               value={note}
-              onChange={e => setNote(e.target.value)}
+              maxLength={200}
+              onChange={e => setNote(e.target.value.slice(0, 200))}
               placeholder="Less spicy, no onion, etc."
             />
+            <small style={{ display: 'block', textAlign: 'right', color: '#667085', fontSize: 11, marginTop: 2 }}>
+              {note.length}/200 characters
+            </small>
           </label>
 
           <div className="checkout-summary">
