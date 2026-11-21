@@ -55,10 +55,12 @@ export function CustomerAuth({ mode, setMode, onClose, onAuth, onGoogle }) {
 
           // Render Google button directly inside container
           googleBtnContainerRef.current.innerHTML = '';
+          const containerW = googleBtnContainerRef.current.offsetWidth;
+          const buttonWidth = containerW && containerW >= 200 ? Math.min(containerW, 360) : 320;
           window.google.accounts.id.renderButton(googleBtnContainerRef.current, {
             theme: 'outline',
             size: 'large',
-            width: googleBtnContainerRef.current.offsetWidth || 340,
+            width: buttonWidth,
             text: mode === 'signup' ? 'signup_with' : 'continue_with',
             shape: 'rectangular',
             logo_alignment: 'left'
