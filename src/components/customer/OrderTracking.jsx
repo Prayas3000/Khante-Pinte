@@ -195,10 +195,10 @@ export function OrderTracking({ orderId, phone, account, onClose, onLookup }) {
   useEffect(() => {
     if (account?.userId) {
       loadMyOrders();
-    } else if (orderId && phone) {
+    } else if (orderId) {
       lookupOrder(orderId, phone);
     }
-  }, [account?.userId]);
+  }, [account?.userId, orderId]);
 
   const current = order ? steps.findIndex(step => step.status === order.status) : -1;
   const isCancelled = order?.status === 'Cancelled';
