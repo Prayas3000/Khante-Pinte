@@ -267,6 +267,15 @@ export function AdminShell({
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <button
+                  type="button"
+                  className="btn-outline"
+                  title="Play order chime sound"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#fff' }}
+                  onClick={() => playNewOrderChime()}
+                >
+                  <Volume2 size={15} /> Play sound
+                </button>
+                <button
                   className="btn-primary"
                   onClick={() => {
                     setSection('Orders');

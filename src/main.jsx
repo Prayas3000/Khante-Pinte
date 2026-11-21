@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { supabase } from '@/lib/supabase';
 import { testConnection } from '@/lib/testConnection';
@@ -207,6 +207,8 @@ function App() {
   const [cart, setCart] = useState([]);
   const [category, setCategory] = useState('All');
   const [search, setSearch] = useState('');
+  const knownOrderIdsRef = useRef(new Set());
+  const initialLoadDoneRef = useRef(false);
 
   const [view, setView] = useState(() =>
     window.location.hostname.startsWith('admin.') ||
@@ -441,7 +443,35 @@ function App() {
         )
         .order('created_at', { ascending: false });
       if (error) throw error;
-      setOrders((data || []).map(formatDbOrder));
+      const formatted = (data || []).map(formatDbOrder);
+
+      // Detect and alert on newly placed orders
+      if (initialLoadDoneRef.current) {
+        const newlyArrived = formatted.filter(o => !knownOrderIdsRef.current.has(o.id));
+        if (newlyArrived.length > 0) {
+          playNewOrderChime();
+          const first = newlyArrived[0];
+          setNewOrderAlert({
+            orderNumber: first.seq,
+            customer: first.customer,
+            amount: first.total
+          });
+          const newNotifications = newlyArrived.map(o => ({
+            id: `${o.id}-${Date.now()}`,
+            title: `New order ${o.id}`,
+            message: `${o.customer} · ${currency(o.total)}`,
+            time: new Date().toISOString(),
+            kind: 'new'
+          }));
+          setNotifications(curr => [...newNotifications, ...curr].slice(0, 30));
+          setNotice(`NEW ORDER: ${first.id} · ${first.customer} · ${currency(first.total)}`);
+        }
+      } else {
+        initialLoadDoneRef.current = true;
+      }
+
+      knownOrderIdsRef.current = new Set(formatted.map(o => o.id));
+      setOrders(formatted);
     } catch (error) {
       console.error('Orders loading failed:', error);
       setOrdersError(error.message || 'Could not load orders.');
@@ -496,6 +526,13 @@ function App() {
 
     loadOrders(true);
 
+    // Ensure realtime websocket has user's JWT token for RLS evaluation
+    supabase.auth.getSession().then(({ data }) => {
+      if (data?.session?.access_token) {
+        supabase.realtime.setAuth(data.session.access_token);
+      }
+    });
+
     const channel = supabase
       .channel('admin-orders-unified-channel')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, payload => {
@@ -503,9 +540,12 @@ function App() {
         const oldRow = payload.old || {};
         if (payload.eventType === 'INSERT') {
           playNewOrderChime();
+          const orderNum = row.order_number;
+          const orderIdStr = `KP-${orderNum || ''}`;
+          knownOrderIdsRef.current.add(orderIdStr);
           const item = {
             id: `${row.id || Date.now()}-new`,
-            title: `New order KP-${row.order_number || ''}`,
+            title: `New order ${orderIdStr}`,
             message: `${row.customer_name || 'Customer'} · ${currency(Number(row.total || 0))}`,
             time: new Date().toISOString(),
             kind: 'new'
@@ -517,7 +557,7 @@ function App() {
             amount: Number(row.total || 0)
           });
           setNotice(
-            `NEW ORDER: KP-${row.order_number || ''} · ${row.customer_name || 'Customer'} · ${currency(
+            `NEW ORDER: ${orderIdStr} · ${row.customer_name || 'Customer'} · ${currency(
               Number(row.total || 0)
             )}`
           );
@@ -547,7 +587,7 @@ function App() {
 
     const syncInterval = setInterval(() => {
       loadOrders(false);
-    }, 15000);
+    }, 10000);
 
     return () => {
       clearInterval(syncInterval);
@@ -754,14 +794,30 @@ function App() {
       current.map(o => (o.id === id ? { ...o, status } : o))
     );
 
-    const { error } = await supabase.from('orders').update({ status: dbStatus }).eq('id', order.dbId);
-    if (error) {
-      console.error('Order status update failed:', error);
-      alert(`Could not update order: ${error.message}`);
-      setNotice(`Could not update order: ${error.message}`);
-      await loadOrders(false);
-      return;
+    // 1. Try secure Postgres RPC (audited, SECURITY DEFINER, transaction-safe)
+    const { data: rpcData, error: rpcError } = await supabase.rpc('update_order_status', {
+      p_order_id: order.dbId,
+      p_status: dbStatus
+    });
+
+    if (rpcError) {
+      console.warn('RPC update_order_status error, falling back to direct table update:', rpcError);
+      // 2. Direct table update fallback with .select() verification
+      const { data: directData, error: directError } = await supabase
+        .from('orders')
+        .update({ status: dbStatus })
+        .eq('id', order.dbId)
+        .select('id, status');
+
+      if (directError || !directData || directData.length === 0) {
+        console.error('Order status update failed completely:', directError || '0 rows updated');
+        alert(`Could not update order: ${directError?.message || rpcError.message || 'Database update failed.'}`);
+        setNotice(`Could not update order: ${directError?.message || rpcError.message || 'Update failed.'}`);
+        await loadOrders(false);
+        return;
+      }
     }
+
     await loadOrders(false);
     setNotice(`${id} updated to ${status}.`);
   };
@@ -775,16 +831,26 @@ function App() {
       current.map(o => (o.id === id ? { ...o, paymentStatus: status } : o))
     );
 
-    const { error } = await supabase
-      .from('orders')
-      .update({ payment_status: status })
-      .eq('id', order.dbId);
-    if (error) {
-      console.error('Payment status update failed:', error);
-      alert(`Could not update payment status: ${error.message}`);
-      await loadOrders(false);
-      return;
+    const { error: rpcError } = await supabase.rpc('update_order_payment_status', {
+      p_order_id: order.dbId,
+      p_payment_status: status
+    });
+
+    if (rpcError) {
+      console.warn('RPC update_order_payment_status error, falling back:', rpcError);
+      const { error: directError } = await supabase
+        .from('orders')
+        .update({ payment_status: status })
+        .eq('id', order.dbId)
+        .select('id, payment_status');
+
+      if (directError) {
+        alert(`Could not update payment status: ${directError.message || rpcError.message}`);
+        await loadOrders(false);
+        return;
+      }
     }
+
     await loadOrders(false);
     setNotice(`${id} payment marked ${status}.`);
   };
@@ -812,13 +878,26 @@ function App() {
       current.map(o => (o.id === id ? { ...o, rider } : o))
     );
 
-    const { error } = await supabase.from('orders').update({ rider_id: riderId }).eq('id', order.dbId);
-    if (error) {
-      console.error('Rider assignment failed:', error);
-      alert(`Could not assign rider: ${error.message}`);
-      await loadOrders(false);
-      return;
+    const { error: rpcError } = await supabase.rpc('assign_order_rider', {
+      p_order_id: order.dbId,
+      p_rider_id: riderId
+    });
+
+    if (rpcError) {
+      console.warn('RPC assign_order_rider error, falling back:', rpcError);
+      const { error: directError } = await supabase
+        .from('orders')
+        .update({ rider_id: riderId })
+        .eq('id', order.dbId)
+        .select('id, rider_id');
+
+      if (directError) {
+        alert(`Could not assign rider: ${directError.message || rpcError.message}`);
+        await loadOrders(false);
+        return;
+      }
     }
+
     await loadOrders(false);
     setNotice(rider ? `${rider} assigned to ${id}.` : `Rider removed from ${id}.`);
   };
@@ -836,20 +915,31 @@ function App() {
   const confirmCancelOrder = async () => {
     if (!cancelTarget?.dbId || cancelSaving) return;
     setCancelSaving(true);
-    const { data, error } = await supabase
-      .from('orders')
-      .update({ status: 'cancelled', cancellation_reason: cancelReasonInput.trim() || null })
-      .eq('id', cancelTarget.dbId)
-      .select('id,status,cancellation_reason')
-      .single();
-    setCancelSaving(false);
-    if (error) {
-      setNotice(`Could not cancel order: ${error.message}`);
-      return;
-    }
-    if (!data || data.status !== 'cancelled') {
-      setNotice('Order was not cancelled. Please refresh and try again.');
-      return;
+    const { data: rpcData, error: rpcError } = await supabase.rpc('update_order_status', {
+      p_order_id: cancelTarget.dbId,
+      p_status: 'cancelled',
+      p_cancellation_reason: cancelReasonInput.trim() || null
+    });
+
+    if (rpcError) {
+      console.warn('RPC cancel order error, falling back:', rpcError);
+      const { data, error } = await supabase
+        .from('orders')
+        .update({ status: 'cancelled', cancellation_reason: cancelReasonInput.trim() || null })
+        .eq('id', cancelTarget.dbId)
+        .select('id,status,cancellation_reason')
+        .single();
+      setCancelSaving(false);
+      if (error) {
+        setNotice(`Could not cancel order: ${error.message || rpcError.message}`);
+        return;
+      }
+      if (!data || data.status !== 'cancelled') {
+        setNotice('Order was not cancelled. Please refresh and try again.');
+        return;
+      }
+    } else {
+      setCancelSaving(false);
     }
     const cancelledId = cancelTarget.id;
     setCancelTarget(null);
