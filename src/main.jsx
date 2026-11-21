@@ -702,8 +702,18 @@ function App() {
     try {
       let paymentProofPath = null;
       if (form.paymentProof) {
-        const extension = form.paymentProof.name.split('.').pop()?.toLowerCase() || 'jpg';
-        paymentProofPath = `proofs/${crypto.randomUUID()}.${extension}`;
+        const allowedMime = ['image/png', 'image/jpeg', 'image/webp'];
+        const allowedExt = ['png', 'jpg', 'jpeg', 'webp'];
+        const extension = form.paymentProof.name.split('.').pop()?.toLowerCase() || '';
+
+        if (!allowedMime.includes(form.paymentProof.type) || !allowedExt.includes(extension)) {
+          throw new Error('Invalid file format. Only PNG, JPG, and WebP images are allowed.');
+        }
+        if (form.paymentProof.size > 5 * 1024 * 1024) {
+          throw new Error('Payment screenshot cannot exceed 5 MB.');
+        }
+
+        paymentProofPath = `proofs/${crypto.randomUUID()}.${extension === 'jpeg' ? 'jpg' : extension}`;
         const { error: proofUploadError } = await supabase.storage
           .from('payment-proofs')
           .upload(paymentProofPath, form.paymentProof, {
@@ -1528,9 +1538,18 @@ function App() {
               onGoogle={async () => {
                 const { error } = await supabase.auth.signInWithOAuth({
                   provider: 'google',
-                  options: { redirectTo: window.location.origin }
+                  options: {
+                    redirectTo: window.location.origin,
+                    queryParams: {
+                      access_type: 'offline',
+                      prompt: 'select_account'
+                    }
+                  }
                 });
-                if (error) setNotice(`Google sign-in failed: ${error.message}`);
+                if (error) {
+                  alert(`Google Sign-In: ${error.message}\n\nNote: To use Google Sign-In, please enable the Google Provider in Supabase Auth Settings.`);
+                  setNotice(`Google sign-in: ${error.message}`);
+                }
               }}
               mode={customerAuthMode}
               setMode={setCustomerAuthMode}
