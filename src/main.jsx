@@ -517,6 +517,36 @@ function App() {
   const [closedNoticeDismissed, setClosedNoticeDismissed] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
+  const [theme, setTheme] = useState(() => {
+    try {
+      const saved = localStorage.getItem('kp_theme');
+      if (saved === 'dark' || saved === 'light') return saved;
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    } catch {
+      return 'light';
+    }
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark-theme');
+    } else {
+      document.documentElement.classList.remove('dark-theme');
+    }
+    try {
+      localStorage.setItem('kp_theme', theme);
+    } catch {}
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      setNotice(next === 'dark' ? '🌙 Dark mode enabled' : '☀️ Light mode enabled');
+      return next;
+    });
+  };
+
   useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => setNotice(''), 3500);
@@ -1381,6 +1411,8 @@ function App() {
             cartCount={cartCount}
             menuOpen={menuOpen}
             setMenuOpen={setMenuOpen}
+            theme={theme}
+            toggleTheme={toggleTheme}
           />
 
           {storeStatusLoaded && !storeOpen && (
@@ -2003,6 +2035,8 @@ function App() {
           setActiveOffer={setActiveOffer}
           storeClosure={storeClosure}
           setStoreClosure={setStoreClosure}
+          theme={theme}
+          toggleTheme={toggleTheme}
         />
       )}
 

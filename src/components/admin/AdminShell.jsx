@@ -12,7 +12,9 @@ import {
   Settings2,
   RefreshCw,
   Volume2,
-  VolumeX
+  VolumeX,
+  Moon,
+  Sun
 } from 'lucide-react';
 import { currency } from '@/utils/formatters';
 import { isSoundEnabled, setSoundEnabled, playNewOrderChime } from '@/utils/audioChime';
@@ -82,7 +84,9 @@ export function AdminShell({
   activeOffer,
   setActiveOffer,
   storeClosure,
-  setStoreClosure
+  setStoreClosure,
+  theme = 'light',
+  toggleTheme
 }) {
   const [soundActive, setSoundActive] = useState(() => isSoundEnabled());
 
@@ -234,6 +238,18 @@ export function AdminShell({
                 </div>
               )}
             </div>
+            {toggleTheme && (
+              <button
+                type="button"
+                className="btn-outline icon-btn"
+                onClick={toggleTheme}
+                aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                style={{ width: 38, height: 38, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                {theme === 'dark' ? <Sun size={17} style={{ color: '#facc15' }} /> : <Moon size={17} />}
+              </button>
+            )}
             <div className="admin-avatar">KP</div>
             <button className="btn-outline admin-logout" onClick={onLogout}>
               Logout

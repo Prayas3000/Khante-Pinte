@@ -1,5 +1,5 @@
 import React from 'react';
-import { LogIn, ShoppingBag, Menu as MenuIcon, X, Instagram, Facebook, ChevronRight, Package, Clock } from 'lucide-react';
+import { LogIn, ShoppingBag, Menu as MenuIcon, X, Instagram, Facebook, ChevronRight, Package, Clock, Moon, Sun } from 'lucide-react';
 
 export function Header({
   brandLogo,
@@ -12,6 +12,8 @@ export function Header({
   cartCount,
   menuOpen,
   setMenuOpen,
+  theme = 'light',
+  toggleTheme,
 }) {
   return (
     <>
@@ -87,6 +89,21 @@ export function Header({
 
           <button className="btn-outline desktop-only-btn" onClick={onOpenTracking} title="Track your order">
             Track order
+          </button>
+
+          {/* One-click Dark / Light Mode Toggle */}
+          <button
+            type="button"
+            className="theme-toggle-btn icon-btn"
+            onClick={toggleTheme}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? (
+              <Sun size={19} className="theme-icon sun" />
+            ) : (
+              <Moon size={19} className="theme-icon moon" />
+            )}
           </button>
 
           <button className="cart-button" onClick={onOpenCart} aria-label={`View cart, ${cartCount} items`}>
@@ -237,6 +254,35 @@ export function Header({
                 </div>
                 <ChevronRight size={18} className="mobile-link-chevron" />
               </a>
+
+              {/* Mobile Drawer Dark Mode Toggle */}
+              <button
+                type="button"
+                className="mobile-nav-link-btn theme-mobile-row"
+                onClick={() => {
+                  if (toggleTheme) toggleTheme();
+                }}
+              >
+                <span className="mobile-nav-icon">{theme === 'dark' ? '☀️' : '🌙'}</span>
+                <div>
+                  <strong>{theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}</strong>
+                  <small>{theme === 'dark' ? 'Comfortable light display' : 'Late-night dark theme'}</small>
+                </div>
+                <span
+                  style={{
+                    marginLeft: 'auto',
+                    padding: '4px 10px',
+                    borderRadius: '8px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    letterSpacing: '0.5px',
+                    background: theme === 'dark' ? '#b9ed75' : '#191916',
+                    color: theme === 'dark' ? '#12180c' : '#ffffff'
+                  }}
+                >
+                  {theme === 'dark' ? 'DARK ON' : 'LIGHT ON'}
+                </span>
+              </button>
             </div>
 
             {/* Social Links */}
