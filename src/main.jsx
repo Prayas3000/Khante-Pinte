@@ -210,15 +210,14 @@ function App() {
 
   const [view, setView] = useState(() =>
     window.location.hostname.startsWith('admin.') ||
-    (['localhost', '127.0.0.1'].includes(window.location.hostname) &&
-      window.location.pathname.startsWith('/admin'))
+    window.location.pathname.startsWith('/admin')
       ? 'admin'
       : 'customer'
   );
 
   useEffect(() => {
-    const localHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-    if (!localHost && !window.location.hostname.startsWith('admin.') && window.location.pathname.startsWith('/admin')) {
+    const isProdCustomer = ['khantepinte.com.np', 'www.khantepinte.com.np'].includes(window.location.hostname);
+    if (isProdCustomer && window.location.pathname.startsWith('/admin')) {
       window.location.replace('https://admin.khantepinte.com.np/');
     }
   }, []);
@@ -931,8 +930,7 @@ function App() {
       setAdminError('Password updated successfully. Please sign in with your new password.');
       setView(
         window.location.hostname.startsWith('admin.') ||
-          (['localhost', '127.0.0.1'].includes(window.location.hostname) &&
-            window.location.pathname.startsWith('/admin'))
+        window.location.pathname.startsWith('/admin')
           ? 'admin'
           : 'customer'
       );
