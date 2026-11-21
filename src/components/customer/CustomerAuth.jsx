@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -11,6 +11,75 @@ export function CustomerAuth({ mode, setMode, onClose, onAuth, onGoogle }) {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [forgotMode, setForgotMode] = useState(false);
+
+  const googleBtnContainerRef = useRef(null);
+  const googleClientId =
+    import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+    '737261871377-h94rjoa3he6e2s67qr74bhblgqa927cg.apps.googleusercontent.com';
+
+  useEffect(() => {
+    let checkInterval = null;
+
+    const initGoogleGsi = () => {
+      if (window.google?.accounts?.id && googleClientId && googleBtnContainerRef.current) {
+        try {
+          window.google.accounts.id.initialize({
+            client_id: googleClientId,
+            callback: async response => {
+              if (!response?.credential) return;
+              setLoading(true);
+              setError('');
+              try {
+                const { data, error: idTokenErr } = await supabase.auth.signInWithIdToken({
+                  provider: 'google',
+                  token: response.credential
+                });
+                if (idTokenErr) throw idTokenErr;
+                const user = data.user;
+                const metadata = user?.user_metadata || {};
+                onAuth({
+                  name: metadata.full_name || metadata.name || user?.email?.split('@')[0] || 'Food lover',
+                  email: user?.email || '',
+                  phone: metadata.phone || '',
+                  userId: user?.id,
+                  avatarUrl: metadata.avatar_url || ''
+                });
+              } catch (authErr) {
+                console.error('Google native sign-in error:', authErr);
+                setError(authErr.message || 'Google sign-in failed.');
+              } finally {
+                setLoading(false);
+              }
+            }
+          });
+
+          // Render Google button directly inside container
+          googleBtnContainerRef.current.innerHTML = '';
+          window.google.accounts.id.renderButton(googleBtnContainerRef.current, {
+            theme: 'outline',
+            size: 'large',
+            width: googleBtnContainerRef.current.offsetWidth || 340,
+            text: mode === 'signup' ? 'signup_with' : 'continue_with',
+            shape: 'rectangular',
+            logo_alignment: 'left'
+          });
+
+          if (checkInterval) clearInterval(checkInterval);
+        } catch (err) {
+          console.warn('GIS initialization error:', err);
+        }
+      }
+    };
+
+    initGoogleGsi();
+    if (!window.google?.accounts?.id) {
+      checkInterval = setInterval(initGoogleGsi, 300);
+    }
+
+    return () => {
+      if (checkInterval) clearInterval(checkInterval);
+    };
+  }, [mode, googleClientId]);
 
   const requestCustomerReset = async () => {
     setError('');
@@ -225,9 +294,21 @@ export function CustomerAuth({ mode, setMode, onClose, onAuth, onGoogle }) {
               <button className="btn-primary full" onClick={submit} disabled={loading}>
                 {loading ? 'Please wait...' : mode === 'login' ? 'Login' : 'Create account'}
               </button>
-              <button className="google-auth-button" onClick={onGoogle}>
-                <span className="google-g">G</span> Continue with Google
-              </button>
+              <div
+                ref={googleBtnContainerRef}
+                style={{
+                  width: '100%',
+                  minHeight: 44,
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  margin: '4px 0'
+                }}
+              >
+                <button type="button" className="google-auth-button" onClick={onGoogle}>
+                  <span className="google-g">G</span> Continue with Google
+                </button>
+              </div>
               {mode === 'login' && (
                 <button
                   className="text-link"
