@@ -42,6 +42,7 @@ import { CustomerAuth } from '@/components/customer/CustomerAuth';
 import { CustomerAccountPanel } from '@/components/customer/CustomerAccountPanel';
 import { OrderTracking } from '@/components/customer/OrderTracking';
 import { OfferModal } from '@/components/customer/OfferModal';
+import { StoreClosedModal } from '@/components/customer/StoreClosedModal';
 
 // Admin Components
 import { AdminLogin } from '@/components/admin/AdminLogin';
@@ -57,6 +58,14 @@ function App() {
   const [activeOffer, setActiveOffer] = useState(null);
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [storeClosure, setStoreClosure] = useState(null);
+  const [showClosureModal, setShowClosureModal] = useState(false);
+
+  const isHolidayClosed = useMemo(() => {
+    return Boolean(
+      storeClosure?.active &&
+      (!storeClosure.reopen_at || new Date(storeClosure.reopen_at) > new Date())
+    );
+  }, [storeClosure]);
 
   useEffect(() => {
     const loadMenu = async () => {
@@ -231,6 +240,9 @@ function App() {
           try { closureObj = JSON.parse(closureObj); } catch {}
         }
         setStoreClosure(closureObj);
+        if (closureObj?.active && (!closureObj.reopen_at || new Date(closureObj.reopen_at) > new Date())) {
+          setShowClosureModal(true);
+        }
       }
 
       if (!openError) {
@@ -242,6 +254,71 @@ function App() {
     };
 
     loadBusinessSettings();
+
+    // Instant Realtime sync for store control and offers
+    const settingsChannel = supabase
+      .channel('realtime-business-settings')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'business_settings' },
+        async payload => {
+          const row = payload.new;
+          if (!row || !row.setting_key) return;
+
+          if (row.setting_key === 'active_offer') {
+            let offerObj = row.setting_value;
+            if (typeof offerObj === 'string') {
+              try { offerObj = JSON.parse(offerObj); } catch {}
+            }
+            setActiveOffer(offerObj);
+            if (offerObj?.active && offerObj?.image_url && offerObj?.show_as_popup) {
+              setShowOfferModal(true);
+            } else {
+              setShowOfferModal(false);
+            }
+          }
+
+          if (row.setting_key === 'store_closure') {
+            let closureObj = row.setting_value;
+            if (typeof closureObj === 'string') {
+              try { closureObj = JSON.parse(closureObj); } catch {}
+            }
+            setStoreClosure(closureObj);
+            const isClosed = closureObj?.active && (!closureObj.reopen_at || new Date(closureObj.reopen_at) > new Date());
+            if (isClosed) {
+              setShowClosureModal(true);
+              setStoreOpen(false);
+            } else {
+              setShowClosureModal(false);
+              const { data: openData } = await supabase.rpc('is_store_open');
+              setStoreOpen(!!openData);
+            }
+          }
+
+          if (row.setting_key === 'store_manual_status') {
+            const status = String(row.setting_value).replaceAll('"', '');
+            setStoreManualStatus(status);
+            const { data: openData } = await supabase.rpc('is_store_open');
+            setStoreOpen(!!openData);
+          }
+
+          if (row.setting_key === 'store_hours') {
+            setStoreHours(row.setting_value);
+            const { data: openData } = await supabase.rpc('is_store_open');
+            setStoreOpen(!!openData);
+          }
+
+          if (row.setting_key === 'delivery_fee') {
+            setDeliveryFee(Number(row.setting_value) || 0);
+          }
+
+          if (row.setting_key === 'brand_logo_url') {
+            setBrandLogo(row.setting_value);
+          }
+        }
+      )
+      .subscribe();
+
     const statusTimer = setInterval(async () => {
       const { data, error } = await supabase.rpc('is_store_open');
       if (!error) {
@@ -249,7 +326,11 @@ function App() {
         setStoreStatusLoaded(true);
       }
     }, 60000);
-    return () => clearInterval(statusTimer);
+
+    return () => {
+      clearInterval(statusTimer);
+      supabase.removeChannel(settingsChannel);
+    };
   }, []);
 
   const [cart, setCart] = useState([]);
@@ -1262,8 +1343,8 @@ function App() {
             onOpenCart={() => {
               if (storeOpen) {
                 setCheckoutOpen(true);
-              } else if (storeClosure?.active && (!storeClosure.reopen_at || new Date(storeClosure.reopen_at) > new Date())) {
-                setNotice(`Khante Pinte is currently closed for ${storeClosure.reason || 'holidays'}. We will reopen on ${storeClosure.reopen_at ? new Date(storeClosure.reopen_at).toLocaleString('en-NP', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'scheduled date'}.`);
+              } else if (isHolidayClosed) {
+                setShowClosureModal(true);
               } else {
                 setNotice('Khante Pinte is currently closed. Please order during our business hours.');
               }
@@ -1310,8 +1391,20 @@ function App() {
                     className="dot-live"
                     style={{ background: storeOpen ? '#16a34a' : '#dc2626' }}
                   />{' '}
-                  {storeOpen ? 'WE ARE OPEN' : 'CURRENTLY CLOSED'} ·{' '}
-                  {formatTime12(storeHours.open_time)} — {formatTime12(storeHours.close_time)} (NPT)
+                  {isHolidayClosed ? (
+                    <span
+                      style={{ cursor: 'pointer', textDecoration: 'underline', fontWeight: 800 }}
+                      onClick={() => setShowClosureModal(true)}
+                      title="Click to view closure announcement"
+                    >
+                      CLOSED FOR HOLIDAYS ({storeClosure.days || 1} {storeClosure.days === 1 ? 'DAY' : 'DAYS'})
+                    </span>
+                  ) : storeOpen ? (
+                    'WE ARE OPEN'
+                  ) : (
+                    'CURRENTLY CLOSED'
+                  )}{' '}
+                  · {formatTime12(storeHours.open_time)} — {formatTime12(storeHours.close_time)} (NPT)
                 </div>
                 <h1>
                   Late night.
@@ -1504,11 +1597,15 @@ function App() {
             <button
               type="button"
               className="bottom-nav-item cart-bottom-item"
-              onClick={() =>
-                storeOpen
-                  ? setCheckoutOpen(true)
-                  : setNotice('Khante Pinte is currently closed. Please order during our business hours.')
-              }
+              onClick={() => {
+                if (storeOpen) {
+                  setCheckoutOpen(true);
+                } else if (isHolidayClosed) {
+                  setShowClosureModal(true);
+                } else {
+                  setNotice('Khante Pinte is currently closed. Please order during our business hours.');
+                }
+              }}
             >
               <div className="bottom-cart-badge-wrap">
                 <ShoppingBag size={20} />
@@ -1548,7 +1645,7 @@ function App() {
             </button>
           </nav>
 
-          {storeStatusLoaded && !storeOpen && !closedNoticeDismissed && (
+          {storeStatusLoaded && !storeOpen && !isHolidayClosed && !closedNoticeDismissed && (
             <div
               className="modal-backdrop"
               style={{
@@ -1770,6 +1867,14 @@ function App() {
                 setVoucherInput(code);
                 applyVoucher();
               }}
+            />
+          )}
+
+          {isHolidayClosed && showClosureModal && (
+            <StoreClosedModal
+              closure={storeClosure}
+              storeHours={storeHours}
+              onClose={() => setShowClosureModal(false)}
             />
           )}
         </>

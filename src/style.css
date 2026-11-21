@@ -1587,3 +1587,158 @@
   color: #ffffff;
 }
 
+/* ========================================================
+   STORE CLOSED MULTI-DAY POPUP MODAL
+   ======================================================== */
+.store-closed-modal-card {
+  max-width: 480px;
+}
+
+.store-closed-header {
+  background: linear-gradient(135deg, #181a14, #2d1810);
+  color: #ffffff;
+  padding: 30px 24px 22px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.store-closed-icon-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  background: rgba(233, 121, 66, 0.18);
+  color: #e97942;
+  border: 1px solid rgba(233, 121, 66, 0.35);
+  display: grid;
+  place-items: center;
+  margin-bottom: 12px;
+}
+
+.store-closed-eyebrow {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.6px;
+  color: #d4a373;
+  margin-bottom: 6px;
+}
+
+.store-closed-title {
+  font-size: 24px;
+  font-weight: 800;
+  margin: 0;
+  line-height: 1.25;
+  color: #ffffff;
+}
+
+.store-closed-body {
+  padding: 20px 24px 14px;
+}
+
+.store-closed-reason-box {
+  background: #fff8f5;
+  border: 1px solid #fbd9c8;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.store-closed-reason-box .reason-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #c2410c;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.store-closed-reason-box .reason-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #7c2d12;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.store-closed-reopen-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.reopen-clock-icon {
+  color: #0284c7;
+  flex-shrink: 0;
+}
+
+.store-closed-reopen-box small {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.8px;
+}
+
+.store-closed-reopen-box strong {
+  display: block;
+  font-size: 14px;
+  color: #0f172a;
+  margin-top: 2px;
+}
+
+.store-closed-friendly-msg {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #667085;
+  margin: 0;
+}
+
+/* Store Control Unified Segmented Bar */
+.admin-store-control-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  margin: 12px 0 16px;
+}
+
+.admin-mode-pill {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #d0d5dd;
+  background: #ffffff;
+  color: #344054;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition: all 0.15s;
+}
+
+.admin-mode-pill:hover {
+  background: #f8fafc;
+  border-color: #98a2b3;
+}
+
+.admin-mode-pill.active {
+  background: #0f172a !important;
+  color: #ffffff !important;
+  border-color: #0f172a !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.admin-mode-pill.active.holiday-active {
+  background: #991b1b !important;
+  border-color: #991b1b !important;
+}
+
+

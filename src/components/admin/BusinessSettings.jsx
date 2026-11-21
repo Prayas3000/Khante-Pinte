@@ -64,10 +64,15 @@ export function BusinessSettings({
   }, [activeOffer]);
 
   // --- Scheduled Store Closure State ---
-  const [closureDays, setClosureDays] = useState(2);
-  const [closureReason, setClosureReason] = useState('Dashain Festival Holidays');
+  const [closureDays, setClosureDays] = useState(storeClosure?.days || 2);
+  const [closureReason, setClosureReason] = useState(storeClosure?.reason || 'Dashain Festival Holidays');
   const [customReopenDate, setCustomReopenDate] = useState('');
   const [savingClosure, setSavingClosure] = useState(false);
+  const [savingHours, setSavingHours] = useState(false);
+
+  // Determine current mode strictly (mutually exclusive)
+  const isClosureActive = storeClosure?.active && (!storeClosure.reopen_at || new Date(storeClosure.reopen_at) > new Date());
+  const currentMode = isClosureActive ? 'holiday' : (storeManualStatus || 'auto');
 
   const uploadBrandLogo = async file => {
     if (!file) return;
@@ -117,8 +122,6 @@ export function BusinessSettings({
       close_time: formatTime12(storeHours?.close_time || '04:00')
     });
   }, [storeHours]);
-
-  const [savingHours, setSavingHours] = useState(false);
 
   useEffect(() => setFeeInput(String(deliveryFee)), [deliveryFee]);
 
@@ -248,27 +251,57 @@ export function BusinessSettings({
     if (!statusError) setStoreOpen(!!data);
   };
 
-  const setManualStatus = async status => {
-    const { error } = await supabase.from('business_settings').upsert(
-      {
-        setting_key: 'store_manual_status',
-        setting_value: status,
-        updated_at: new Date().toISOString()
-      },
-      { onConflict: 'setting_key' }
-    );
-    if (error) {
-      setMessage(`Could not update store status: ${error.message}`);
-      return;
+  // --- UNIFIED STORE CONTROL (Mutually Exclusive) ---
+  const setStoreMode = async targetMode => {
+    setMessage('');
+    setSavingHours(true);
+    try {
+      // 1. If switching away from holiday closure, cancel closure in DB
+      if (isClosureActive && targetMode !== 'holiday') {
+        const clearPayload = {
+          active: false,
+          reason: '',
+          days: 0,
+          reopen_at: null,
+          updated_at: new Date().toISOString()
+        };
+        await supabase.from('business_settings').upsert(
+          {
+            setting_key: 'store_closure',
+            setting_value: clearPayload,
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: 'setting_key' }
+        );
+        if (setStoreClosure) setStoreClosure(clearPayload);
+      }
+
+      // 2. Set manual status in DB
+      if (['auto', 'open', 'closed'].includes(targetMode)) {
+        await supabase.from('business_settings').upsert(
+          {
+            setting_key: 'store_manual_status',
+            setting_value: targetMode,
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: 'setting_key' }
+        );
+        setStoreManualStatus(targetMode);
+        const { data: openData } = await supabase.rpc('is_store_open');
+        setStoreOpen(!!openData);
+        setMessage(
+          targetMode === 'auto'
+            ? 'Automatic schedule active (9:00 PM – 4:00 AM).'
+            : targetMode === 'open'
+            ? 'Store manually set to OPEN.'
+            : 'Store manually set to CLOSED for tonight.'
+        );
+      }
+    } catch (err) {
+      setMessage(`Could not update store status: ${err.message}`);
+    } finally {
+      setSavingHours(false);
     }
-    setStoreManualStatus(status);
-    const { data, error: statusError } = await supabase.rpc('is_store_open');
-    if (!statusError) setStoreOpen(!!data);
-    setMessage(
-      status === 'auto'
-        ? 'Automatic opening hours restored.'
-        : `Store manually set to ${status}.`
-    );
   };
 
   // --- Scheduled Holiday Closure Actions ---
@@ -281,7 +314,7 @@ export function BusinessSettings({
       if (customDateStr) {
         reopenDate = new Date(customDateStr);
         if (isNaN(reopenDate.getTime()) || reopenDate <= now) {
-          throw new Error('Please choose a valid future reopening date & time.');
+          throw new Error('Please choose a future reopening date & time.');
         }
       } else {
         const target = new Date(now.getTime() + days * 24 * 3600 * 1000);
@@ -298,20 +331,30 @@ export function BusinessSettings({
         updated_at: new Date().toISOString()
       };
 
-      const { error } = await supabase.from('business_settings').upsert(
-        {
-          setting_key: 'store_closure',
-          setting_value: closurePayload,
-          updated_at: new Date().toISOString()
-        },
-        { onConflict: 'setting_key' }
-      );
-      if (error) throw error;
+      // Atomically save closure and set store_manual_status to 'holiday'
+      await Promise.all([
+        supabase.from('business_settings').upsert(
+          {
+            setting_key: 'store_closure',
+            setting_value: closurePayload,
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: 'setting_key' }
+        ),
+        supabase.from('business_settings').upsert(
+          {
+            setting_key: 'store_manual_status',
+            setting_value: 'holiday',
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: 'setting_key' }
+        )
+      ]);
 
       if (setStoreClosure) setStoreClosure(closurePayload);
-      const { data: statusData } = await supabase.rpc('is_store_open');
-      setStoreOpen(!!statusData);
-      setMessage(`Holiday closure scheduled. Store closed until ${reopenDate.toLocaleString('en-NP', { dateStyle: 'medium', timeStyle: 'short' })} for ${reasonText}.`);
+      setStoreManualStatus('holiday');
+      setStoreOpen(false);
+      setMessage(`Holiday closure scheduled. Store is now CLOSED for ${days || 1} days until ${reopenDate.toLocaleString('en-NP', { dateStyle: 'medium', timeStyle: 'short' })}.`);
     } catch (err) {
       setMessage(`Could not set closure: ${err.message}`);
     } finally {
@@ -330,20 +373,30 @@ export function BusinessSettings({
         reopen_at: null,
         updated_at: new Date().toISOString()
       };
-      const { error } = await supabase.from('business_settings').upsert(
-        {
-          setting_key: 'store_closure',
-          setting_value: clearPayload,
-          updated_at: new Date().toISOString()
-        },
-        { onConflict: 'setting_key' }
-      );
-      if (error) throw error;
+      await Promise.all([
+        supabase.from('business_settings').upsert(
+          {
+            setting_key: 'store_closure',
+            setting_value: clearPayload,
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: 'setting_key' }
+        ),
+        supabase.from('business_settings').upsert(
+          {
+            setting_key: 'store_manual_status',
+            setting_value: 'auto',
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: 'setting_key' }
+        )
+      ]);
 
       if (setStoreClosure) setStoreClosure(clearPayload);
+      setStoreManualStatus('auto');
       const { data: statusData } = await supabase.rpc('is_store_open');
       setStoreOpen(!!statusData);
-      setMessage('Holiday closure cancelled. Normal store availability restored.');
+      setMessage('Holiday closure ended. Automatic schedule restored.');
     } catch (err) {
       setMessage(`Could not cancel closure: ${err.message}`);
     } finally {
@@ -416,8 +469,6 @@ export function BusinessSettings({
     }
   };
 
-  const isClosureActive = storeClosure?.active && (!storeClosure.reopen_at || new Date(storeClosure.reopen_at) > new Date());
-
   return (
     <div style={{ display: 'grid', gap: 20 }}>
       {/* 1. KHANTE PINTE BRANDING */}
@@ -447,13 +498,13 @@ export function BusinessSettings({
           />
         </label>
         {message && (
-          <p className={message.includes('updated') || message.includes('saved') || message.includes('scheduled') ? 'success-note' : 'form-error'}>
+          <p className={message.includes('updated') || message.includes('saved') || message.includes('scheduled') || message.includes('restored') ? 'success-note' : 'form-error'}>
             {message}
           </p>
         )}
       </section>
 
-      {/* 2. OFFERS & FESTIVE ANNOUNCEMENTS (NEW SECTION) */}
+      {/* 2. OFFERS & FESTIVE ANNOUNCEMENTS */}
       <section className="panel" style={{ padding: 20 }}>
         <div className="panel-head">
           <div>
@@ -476,7 +527,7 @@ export function BusinessSettings({
             <strong>Customer Visibility</strong>
             <small style={{ display: 'block', color: '#667085', marginTop: 2 }}>
               {offerForm.active
-                ? 'Offer is ON: Customers will see the popup and announcement banner on the website.'
+                ? 'Offer is ON: Customers will immediately see the popup and announcement banner.'
                 : 'Offer is OFF: Nothing is shown to customers.'}
             </small>
           </div>
@@ -507,7 +558,7 @@ export function BusinessSettings({
               <div className="admin-image-container-preview">
                 <img src={offerForm.image_url} alt="Offer banner preview" />
               </div>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                 <label className="btn-outline" style={{ cursor: 'pointer', margin: 0 }}>
                   Replace photo
                   <input
@@ -582,7 +633,7 @@ export function BusinessSettings({
             maxLength={300}
             value={offerForm.description}
             onChange={e => setOfferForm(f => ({ ...f, description: e.target.value.slice(0, 300) }))}
-            placeholder="e.g. Wishing all our food lovers a joyful Vijaya Dashami! Use code DASHAIN15 for 15% off on orders above Rs. 1,000."
+            placeholder="e.g. Wishing all our food lovers a joyful Vijaya Dashami! Enjoy 15% off on orders above Rs. 1,000."
           />
         </label>
 
@@ -616,16 +667,22 @@ export function BusinessSettings({
         </button>
       </section>
 
-      {/* 3. STORE AVAILABILITY, BUSINESS HOURS & HOLIDAY CLOSURES */}
+      {/* 3. STORE AVAILABILITY & UNIFIED STORE CONTROL */}
       <section className="panel" style={{ padding: 20 }}>
         <div className="panel-head">
           <div>
             <h3>Store availability & business hours</h3>
-            <small>Set your regular hours or manually open/close the customer website.</small>
+            <small>Set your operating hours or manage store open/closed states.</small>
           </div>
-          <strong style={{ color: storeOpen ? '#15803d' : '#dc2626' }}>
-            {storeOpen ? 'OPEN NOW' : 'CLOSED NOW'}
-          </strong>
+          {currentMode === 'holiday' ? (
+            <strong style={{ color: '#dc2626' }}>
+              ● CLOSED FOR HOLIDAYS ({storeClosure.days || 1}d)
+            </strong>
+          ) : (
+            <strong style={{ color: storeOpen ? '#15803d' : '#dc2626' }}>
+              {storeOpen ? '● OPEN NOW' : '○ CLOSED NOW'}
+            </strong>
+          )}
         </div>
 
         {/* Regular Hours Input */}
@@ -671,42 +728,60 @@ export function BusinessSettings({
           {savingHours ? 'Saving…' : 'Save business hours'}
         </button>
 
-        {/* Manual Status Buttons */}
+        {/* UNIFIED STORE CONTROL BUTTONS (Mutually exclusive: only one is ever active) */}
         <div style={{ borderTop: '1px solid #eaecf0', marginTop: 18, paddingTop: 16 }}>
-          <strong>Store control</strong>
-          <p style={{ color: '#667085', margin: '6px 0 12px' }}>
-            Automatic follows the schedule. Manual open/closed overrides the schedule until you switch back to Automatic.
+          <strong>Store Control Mode</strong>
+          <p style={{ color: '#667085', margin: '4px 0 12px', fontSize: 13 }}>
+            Select one active mode. Activating one mode automatically deactivates the others:
           </p>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div className="admin-store-control-grid">
             <button
-              className={storeManualStatus === 'auto' ? 'btn-primary' : 'btn-outline'}
-              onClick={() => setManualStatus('auto')}
+              type="button"
+              className={`admin-mode-pill ${currentMode === 'auto' ? 'active' : ''}`}
+              onClick={() => setStoreMode('auto')}
+              disabled={savingHours || savingClosure}
             >
-              Automatic
+              ⏰ Automatic Schedule
             </button>
             <button
-              className={storeManualStatus === 'open' ? 'btn-primary' : 'btn-outline'}
-              onClick={() => setManualStatus('open')}
+              type="button"
+              className={`admin-mode-pill ${currentMode === 'open' ? 'active' : ''}`}
+              onClick={() => setStoreMode('open')}
+              disabled={savingHours || savingClosure}
             >
-              Open store
+              🟢 Open store (Now)
             </button>
             <button
-              className={storeManualStatus === 'closed' ? 'btn-primary' : 'btn-outline'}
-              onClick={() => setManualStatus('closed')}
+              type="button"
+              className={`admin-mode-pill ${currentMode === 'closed' ? 'active' : ''}`}
+              onClick={() => setStoreMode('closed')}
+              disabled={savingHours || savingClosure}
             >
-              Close store
+              🔴 Close store (Tonight)
+            </button>
+            <button
+              type="button"
+              className={`admin-mode-pill ${currentMode === 'holiday' ? 'active holiday-active' : ''}`}
+              onClick={() => {
+                if (!isClosureActive) {
+                  scheduleClosure(closureDays, closureReason, customReopenDate);
+                }
+              }}
+              disabled={savingHours || savingClosure}
+            >
+              🏮 Closed for {isClosureActive ? `${storeClosure.days || 1}d` : `${closureDays}d`} Holidays
             </button>
           </div>
         </div>
 
-        {/* NEW: SCHEDULED HOLIDAY / MULTI-DAY CLOSURE SUB-PANEL */}
-        <div style={{ borderTop: '1px solid #eaecf0', marginTop: 22, paddingTop: 18 }}>
+        {/* MULTI-DAY / HOLIDAY CLOSURE DETAILS PANEL */}
+        <div style={{ borderTop: '1px solid #eaecf0', marginTop: 16, paddingTop: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <Calendar size={18} color="#991b1b" />
-            <strong style={{ fontSize: 15 }}>Scheduled Multi-Day / Holiday Closure</strong>
+            <strong style={{ fontSize: 14 }}>Multi-Day Holiday Closure Details (Dashain / Holidays)</strong>
           </div>
           <p style={{ color: '#667085', margin: '4px 0 14px', fontSize: 13 }}>
-            Notify customers when closing for Dashain, Tihar, or holidays for 1, 2, or 3 days. Customers will see your polite reason and exact reopening date.
+            When scheduled, a popup modal on the customer website informs customers that you are closed for the selected duration with your reason and reopening date.
           </p>
 
           {isClosureActive ? (
@@ -714,7 +789,7 @@ export function BusinessSettings({
               <div>
                 <div className="admin-closure-title">
                   <AlertTriangle size={18} />
-                  <span>STORE CURRENTLY CLOSED FOR HOLIDAYS</span>
+                  <span>STORE CURRENTLY CLOSED FOR {storeClosure.days || 1} DAYS</span>
                 </div>
                 <div className="admin-closure-subtitle">
                   <strong>Reason:</strong> {storeClosure.reason || 'Holiday closure'}
@@ -822,7 +897,7 @@ export function BusinessSettings({
               >
                 {savingClosure
                   ? 'Scheduling closure…'
-                  : `Schedule Closure (${customReopenDate ? 'Custom Date' : `${closureDays} Days`})`}
+                  : `Schedule Closure for ${customReopenDate ? 'Custom Date' : `${closureDays} Days`}`}
               </button>
             </div>
           )}
