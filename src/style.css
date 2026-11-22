@@ -1771,8 +1771,8 @@
   --line: #23281d;
   --paper: #151811;
   --dark: #070905;
-  --green: #b9ed75;
-  --green-dark: #3f681d;
+  --green: #f2a13a;
+  --green-dark: #d98826;
   --orange: #f28b55;
   color-scheme: dark;
 }
@@ -1858,7 +1858,7 @@
 
 [data-theme="dark"] .benefits svg {
   background: #1c2215 !important;
-  color: #b9ed75 !important;
+  color: #f2a13a !important;
 }
 
 [data-theme="dark"] .benefits strong {
@@ -1908,9 +1908,9 @@
 }
 
 [data-theme="dark"] .cat-pill.active {
-  background: #b9ed75 !important;
-  border-color: #b9ed75 !important;
-  color: #12180c !important;
+  background: #87383b !important;
+  border-color: #87383b !important;
+  color: #ffffff !important;
   font-weight: 800 !important;
 }
 
@@ -2069,7 +2069,7 @@
 }
 
 [data-theme="dark"] .bottom-nav-item.active {
-  color: #b9ed75 !important;
+  color: #f2a13a !important;
 }
 
 [data-theme="dark"] .mobile-nav {
@@ -2122,8 +2122,8 @@
 }
 
 [data-theme="dark"] .account-tabs button.active {
-  color: #b9ed75 !important;
-  border-bottom: 2px solid #b9ed75 !important;
+  color: #f2a13a !important;
+  border-bottom: 2px solid #f2a13a !important;
 }
 
 [data-theme="dark"] .checkout-modal,
@@ -6037,4 +6037,427 @@ body {
 .offer-empty-actions .offer-action-btn:hover {
   background: #6b2c2e !important;
   transform: translateY(-1px) !important;
+}
+
+/* ==========================================================================
+   Mobile-First Clean Login & Dark Mode Contrast Polish
+   ========================================================================== */
+
+/* 1. Admin Login & Dark Mode High Contrast */
+.login-page {
+  min-height: 100vh !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 24px 16px !important;
+  background: #fff7f0 !important;
+}
+
+[data-theme="dark"] .login-page {
+  background: #171414 !important;
+}
+
+.login-card {
+  width: 100% !important;
+  max-width: 420px !important;
+  background: #ffffff !important;
+  border: 1px solid #efe3d8 !important;
+  border-radius: 24px !important;
+  padding: 36px 30px !important;
+  box-shadow: 0 16px 44px rgba(135, 56, 59, 0.08) !important;
+  box-sizing: border-box !important;
+}
+
+[data-theme="dark"] .login-card {
+  background: #252020 !important;
+  border-color: #383030 !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6) !important;
+  color: #f8ebe0 !important;
+}
+
+.login-card .brand-mark.large {
+  width: 52px !important;
+  height: 52px !important;
+  border-radius: 16px !important;
+  background: #87383b !important;
+  color: #ffffff !important;
+  font-size: 20px !important;
+  font-weight: 800 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-bottom: 16px !important;
+}
+
+.login-card .eyebrow {
+  color: #87383b !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: 1.5px !important;
+  margin-bottom: 8px !important;
+}
+
+[data-theme="dark"] .login-card .eyebrow {
+  color: #f2a13a !important;
+}
+
+.login-card h1 {
+  font-size: 24px !important;
+  font-weight: 800 !important;
+  color: #292323 !important;
+  margin: 0 0 8px !important;
+}
+
+[data-theme="dark"] .login-card h1 {
+  color: #ffffff !important;
+}
+
+.login-card h1 em {
+  color: #f2a13a !important;
+  font-style: normal !important;
+}
+
+.login-card p {
+  color: #685f5d !important;
+  font-size: 13.5px !important;
+  line-height: 1.5 !important;
+  margin: 0 0 22px !important;
+}
+
+[data-theme="dark"] .login-card p {
+  color: #b5aaa8 !important;
+}
+
+.login-card label {
+  display: block !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #292323 !important;
+  margin-bottom: 14px !important;
+}
+
+[data-theme="dark"] .login-card label {
+  color: #f8ebe0 !important;
+}
+
+.login-card input {
+  width: 100% !important;
+  height: 48px !important;
+  padding: 0 16px !important;
+  border-radius: 12px !important;
+  border: 1px solid #efe3d8 !important;
+  background: #fff7f0 !important;
+  color: #292323 !important;
+  font-size: 14.5px !important;
+  margin-top: 6px !important;
+  box-sizing: border-box !important;
+  transition: all 0.2s ease !important;
+}
+
+[data-theme="dark"] .login-card input {
+  background: #1c1818 !important;
+  border-color: #383030 !important;
+  color: #ffffff !important;
+}
+
+.login-card input:focus {
+  border-color: #f2a13a !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(242, 161, 58, 0.25) !important;
+}
+
+.login-card .btn-primary {
+  width: 100% !important;
+  height: 48px !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  border-radius: 12px !important;
+  background: #87383b !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 18px rgba(135, 56, 59, 0.25) !important;
+  margin-top: 8px !important;
+}
+
+.login-card .btn-primary:hover {
+  background: #6b2c2e !important;
+}
+
+/* 2. Admin Topbar & Dashboard Contrast */
+.welcome-row {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 24px !important;
+}
+
+.welcome-row h2 {
+  font-size: 26px !important;
+  font-weight: 800 !important;
+  color: #292323 !important;
+  margin: 0 0 6px !important;
+}
+
+.welcome-row p {
+  color: #685f5d !important;
+  font-size: 14px !important;
+  margin: 0 !important;
+}
+
+[data-theme="dark"] .welcome-row h2 {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .welcome-row p {
+  color: #b5aaa8 !important;
+}
+
+[data-theme="dark"] .admin-topbar .eyebrow {
+  color: #f2a13a !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="dark"] .admin-topbar h1 {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .shift-chip {
+  background: #252020 !important;
+  border-color: #383030 !important;
+  color: #f8ebe0 !important;
+}
+
+[data-theme="dark"] .shift-chip .dot-live {
+  background: #22c55e !important;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.25) !important;
+}
+
+[data-theme="dark"] .admin-sidebar .nav-item {
+  color: #b5aaa8 !important;
+}
+
+[data-theme="dark"] .admin-sidebar .nav-item:hover {
+  background: #252020 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .admin-sidebar .nav-item.nav-active {
+  background: #87383b !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .prototype-pill {
+  background: #252020 !important;
+  border-color: #383030 !important;
+  color: #f2a13a !important;
+}
+
+/* 3. Customer Auth Modal (Simple, Modern, Mobile-First) */
+.auth-modal {
+  width: min(420px, 92vw) !important;
+  max-width: 420px !important;
+  border-radius: 24px !important;
+  border: 1px solid #efe3d8 !important;
+  background: #ffffff !important;
+  overflow: hidden !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2) !important;
+}
+
+[data-theme="dark"] .auth-modal {
+  background: #252020 !important;
+  border-color: #383030 !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6) !important;
+}
+
+.auth-modal .modal-head {
+  padding: 20px 22px 14px !important;
+  border-bottom: 1px solid #efe3d8 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+[data-theme="dark"] .auth-modal .modal-head {
+  border-bottom-color: #383030 !important;
+}
+
+.auth-modal .modal-head .eyebrow {
+  color: #87383b !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: 1.5px !important;
+}
+
+[data-theme="dark"] .auth-modal .modal-head .eyebrow {
+  color: #f2a13a !important;
+}
+
+.auth-modal .modal-head h2 {
+  font-size: 21px !important;
+  font-weight: 800 !important;
+  color: #292323 !important;
+  margin: 4px 0 0 !important;
+}
+
+[data-theme="dark"] .auth-modal .modal-head h2 {
+  color: #ffffff !important;
+}
+
+.auth-modal .checkout-scroll {
+  padding: 20px 22px !important;
+}
+
+.auth-modal label {
+  display: block !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #292323 !important;
+  margin-bottom: 14px !important;
+}
+
+[data-theme="dark"] .auth-modal label {
+  color: #f8ebe0 !important;
+}
+
+.auth-modal input {
+  width: 100% !important;
+  height: 48px !important;
+  padding: 0 14px !important;
+  border-radius: 12px !important;
+  border: 1px solid #efe3d8 !important;
+  background: #fff7f0 !important;
+  color: #292323 !important;
+  font-size: 14.5px !important;
+  margin-top: 6px !important;
+  box-sizing: border-box !important;
+  transition: all 0.2s ease !important;
+}
+
+[data-theme="dark"] .auth-modal input {
+  background: #1c1818 !important;
+  border-color: #383030 !important;
+  color: #ffffff !important;
+}
+
+.auth-modal input:focus {
+  border-color: #f2a13a !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(242, 161, 58, 0.25) !important;
+}
+
+.auth-modal .btn-primary {
+  width: 100% !important;
+  height: 48px !important;
+  border-radius: 12px !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  background: #87383b !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 18px rgba(135, 56, 59, 0.25) !important;
+  margin: 8px 0 6px !important;
+}
+
+.auth-modal .btn-primary:hover {
+  background: #6b2c2e !important;
+}
+
+.auth-modal .google-auth-button {
+  width: 100% !important;
+  height: 46px !important;
+  border-radius: 12px !important;
+  border: 1px solid #efe3d8 !important;
+  background: #ffffff !important;
+  color: #292323 !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+  margin: 8px 0 !important;
+  transition: all 0.2s ease !important;
+}
+
+[data-theme="dark"] .auth-modal .google-auth-button {
+  background: #1c1818 !important;
+  border-color: #383030 !important;
+  color: #ffffff !important;
+}
+
+.auth-modal .btn-outline {
+  width: 100% !important;
+  height: 44px !important;
+  border-radius: 12px !important;
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  border: 1px solid #efe3d8 !important;
+  background: transparent !important;
+  color: #685f5d !important;
+  margin-top: 8px !important;
+}
+
+[data-theme="dark"] .auth-modal .btn-outline {
+  border-color: #383030 !important;
+  color: #b5aaa8 !important;
+}
+
+.auth-modal .guest-note {
+  text-align: center !important;
+  margin: 12px 0 4px !important;
+  font-size: 13px !important;
+  color: #685f5d !important;
+}
+
+[data-theme="dark"] .auth-modal .guest-note {
+  color: #b5aaa8 !important;
+}
+
+.auth-modal .guest-note .text-link {
+  color: #87383b !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="dark"] .auth-modal .guest-note .text-link {
+  color: #f2a13a !important;
+}
+
+.auth-modal .prototype-note {
+  display: block !important;
+  text-align: center !important;
+  margin-top: 12px !important;
+  font-size: 11.5px !important;
+  color: #9c9492 !important;
+}
+
+[data-theme="dark"] .auth-modal .prototype-note {
+  color: #807674 !important;
+}
+
+/* 4. Mobile Responsive Polish */
+@media (max-width: 480px) {
+  .login-page {
+    padding: 16px 12px !important;
+  }
+  .login-card {
+    padding: 24px 18px !important;
+    border-radius: 20px !important;
+  }
+  .login-card h1 {
+    font-size: 21px !important;
+  }
+  .auth-modal {
+    width: calc(100vw - 24px) !important;
+    border-radius: 20px !important;
+    margin: 12px auto !important;
+  }
+  .auth-modal .modal-head {
+    padding: 16px 18px 12px !important;
+  }
+  .auth-modal .checkout-scroll {
+    padding: 16px 18px !important;
+  }
+  .rider-login-card {
+    padding: 24px 18px !important;
+    border-radius: 20px !important;
+  }
 }

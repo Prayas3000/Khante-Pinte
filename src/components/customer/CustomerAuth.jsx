@@ -357,7 +357,7 @@ export function CustomerAuth({ mode, setMode, onClose, onAuth, onGoogle }) {
             </>
           )}
           <small className="prototype-note">
-            You can still place an order as a guest. Your account is securely managed by Supabase.
+            You can also order directly as a guest without creating an account.
           </small>
         </div>
       </div>

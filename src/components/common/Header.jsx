@@ -298,8 +298,8 @@ export function Header({
                     fontSize: '11px',
                     fontWeight: 700,
                     letterSpacing: '0.5px',
-                    background: theme === 'dark' ? '#b9ed75' : '#191916',
-                    color: theme === 'dark' ? '#12180c' : '#ffffff'
+                    background: theme === 'dark' ? '#f2a13a' : '#191916',
+                    color: theme === 'dark' ? '#292323' : '#ffffff'
                   }}
                 >
                   {theme === 'dark' ? 'DARK ON' : 'LIGHT ON'}
