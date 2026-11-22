@@ -1,5 +1,5 @@
 import React from 'react';
-import { LogIn, ShoppingBag, Menu as MenuIcon, X, Instagram, Facebook, ChevronRight, Package, Clock, Moon, Sun } from 'lucide-react';
+import { LogIn, ShoppingBag, Menu as MenuIcon, X, Instagram, Facebook, ChevronRight, Package, Clock, Moon, Sun, Search, Tag } from 'lucide-react';
 
 export function Header({
   brandLogo,
@@ -15,7 +15,15 @@ export function Header({
   theme = 'light',
   toggleTheme,
   onGoToRider,
+  onOpenOffers
 }) {
+  const handleSearchClick = () => {
+    const searchInput = document.querySelector('.search-box input');
+    if (searchInput) {
+      searchInput.focus();
+      document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
   return (
     <>
       <header className="site-header">
@@ -27,13 +35,31 @@ export function Header({
           )}
           <span>
             <strong>KHANTE PINTE</strong>
-            <small>Late night cravings, sorted.</small>
+            <small>Late Night Food Delivery · Biratnagar</small>
           </span>
         </a>
         <nav className="main-nav">
+          <a href="#top">Home</a>
           <a href="#menu">Menu</a>
+          {onOpenOffers && (
+            <button
+              type="button"
+              className="nav-link-btn"
+              onClick={onOpenOffers}
+              style={{ background: 'none', border: 'none', font: 'inherit', cursor: 'pointer', padding: 0 }}
+            >
+              Offers
+            </button>
+          )}
+          <button
+            type="button"
+            className="nav-link-btn"
+            onClick={onOpenTracking}
+            style={{ background: 'none', border: 'none', font: 'inherit', cursor: 'pointer', padding: 0 }}
+          >
+            Track Order
+          </button>
           <a href="#about">About</a>
-          <a href="#contact">Contact</a>
           <div className="header-social-group">
             <a
               href="https://www.instagram.com/khantepinte.biratnagar?utm_source=ig_web_button_share_sheet&dmpr=ZDNlZDc0MzIxNw=="
@@ -43,7 +69,7 @@ export function Header({
               aria-label="Instagram"
               title="Follow Khante Pinte on Instagram"
             >
-              <Instagram size={17} />
+              <Instagram size={16} />
             </a>
             <a
               href="https://www.facebook.com/KhantePinte.biratnagar/"
@@ -53,7 +79,7 @@ export function Header({
               aria-label="Facebook"
               title="Follow Khante Pinte on Facebook"
             >
-              <Facebook size={17} />
+              <Facebook size={16} />
             </a>
           </div>
         </nav>
@@ -90,6 +116,16 @@ export function Header({
 
           <button className="btn-outline desktop-only-btn" onClick={onOpenTracking} title="Track your order">
             Track order
+          </button>
+
+          <button
+            type="button"
+            className="icon-btn header-search-trigger"
+            onClick={handleSearchClick}
+            aria-label="Search Menu"
+            title="Search Menu"
+          >
+            <Search size={18} />
           </button>
 
           {/* One-click Dark / Light Mode Toggle */}

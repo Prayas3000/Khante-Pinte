@@ -1103,7 +1103,7 @@ export function RiderManager({ riders = [], setRiders, orders = [] }) {
                             {record.notes}
                           </strong>
                           <small style={{ color: 'var(--text-secondary, #64748b)' }}>
-                            {new Date(record.created_at).toLocaleString()} {record.admin_email ? `· by ${record.admin_email.includes('noobvak') ? 'Aayush' : record.admin_email}` : ''}
+                            {new Date(record.created_at).toLocaleString()} {record.admin_email ? `· Auth by ${record.admin_email.toLowerCase().includes('noobvak') || record.admin_email.includes('@') ? 'Aayush' : record.admin_email}` : ''}
                           </small>
                         </div>
                         <div style={{ textAlign: 'right' }}>

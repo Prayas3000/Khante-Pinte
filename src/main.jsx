@@ -14,7 +14,9 @@ import {
   Wallet,
   X,
   ShoppingBag,
-  Sparkles
+  Sparkles,
+  UtensilsCrossed,
+  Award
 } from 'lucide-react';
 
 import {
@@ -1443,6 +1445,7 @@ function App() {
             theme={theme}
             toggleTheme={toggleTheme}
             onGoToRider={() => setView('rider')}
+            onOpenOffers={() => setShowOfferModal(true)}
           />
 
           {storeStatusLoaded && !storeOpen && (
@@ -1525,20 +1528,19 @@ function App() {
                   · {formatTime12(storeHours.open_time)} — {formatTime12(storeHours.close_time)} (NPT)
                 </div>
                 <h1>
-                  Late night.
+                  Late night cravings,
                   <br />
-                  <em>Great bites.</em>
+                  <em>delivered fresh.</em>
                 </h1>
                 <p>
-                  When hunger doesn't sleep, neither do we. Fresh food, bold flavours, delivered across
-                  Biratnagar from Buspark.
+                  Biratnagar's beloved late-night kitchen. Fresh, comforting, bold flavours delivered hot straight to your doorstep from Buspark.
                 </p>
                 <div className="hero-cta">
                   <a className="btn-primary" href="#menu">
-                    Explore menu <ChevronRight />
+                    Order Now <ChevronRight size={16} />
                   </a>
                   <span>
-                    <Clock3 size={16} /> Night delivery (9 PM – 4 AM)
+                    <Clock3 size={16} /> Night delivery ({formatTime12(storeHours.open_time)} – {formatTime12(storeHours.close_time)})
                   </span>
                 </div>
                 <div className="hero-meta">
@@ -1550,58 +1552,59 @@ function App() {
                   </a>
                 </div>
               </div>
-              <div className="hero-art">
-                <div className="hero-orbit orbit-1" />
-                <div className="hero-orbit orbit-2" />
-                <div className="hero-food">🍜</div>
-                <div className="hero-sticker sticker-top">
-                  OPEN
-                  <br />
-                  <b>{formatTime12(storeHours.open_time)}</b>
-                </div>
-                <div className="hero-sticker sticker-bottom">
-                  <b>{formatTime12(storeHours.close_time)}</b>
-                  <br />
-                  CLOSING
-                </div>
-                <div className="hero-art-caption">
-                  NIGHT CRAVINGS
-                  <br />
-                  <strong>MADE RIGHT.</strong>
+              <div className="hero-art hero-redesign-art">
+                <div className="hero-food-card-wrapper">
+                  <img
+                    src="https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=900&q=80"
+                    alt="Authentic Fresh Food from Khante Pinte"
+                    className="hero-main-photo"
+                  />
+                  <div className="hero-floating-badge badge-top-right">
+                    <span className="badge-icon">🌙</span>
+                    <div>
+                      <strong>Night Service</strong>
+                      <small>{formatTime12(storeHours.open_time)} – {formatTime12(storeHours.close_time)}</small>
+                    </div>
+                  </div>
+                  <div className="hero-floating-badge badge-bottom-left">
+                    <span className="badge-icon">🍲</span>
+                    <div>
+                      <strong>176+ Dishes</strong>
+                      <small>Fresh & Cooked to Order</small>
+                    </div>
+                  </div>
                 </div>
               </div>
             </section>
 
             <section className="benefits">
               <div>
-                <Clock3 />
-                <span>
-                  <strong>Night service</strong>
-                  <small>
-                    {formatTime12(storeHours.open_time)} – {formatTime12(storeHours.close_time)} (NPT)
-                  </small>
-                </span>
-              </div>
-              <div>
                 <Bike />
                 <span>
-                  <strong>Delivery</strong>
-                  <small>Buspark & Biratnagar</small>
+                  <strong>Fast Delivery</strong>
+                  <small>Prompt across Biratnagar</small>
                 </span>
               </div>
               <div>
-                <Wallet />
+                <UtensilsCrossed />
                 <span>
-                  <strong>Easy payment</strong>
-                  <small>COD / Fonepay QR</small>
+                  <strong>176+ Varieties</strong>
+                  <small>7 delicious categories</small>
                 </span>
               </div>
               <div>
-                <Phone />
+                <Award />
                 <span>
-                  <strong>Call to order</strong>
+                  <strong>Quality & Fresh</strong>
+                  <small>Cooked fresh every night</small>
+                </span>
+              </div>
+              <div>
+                <Clock3 />
+                <span>
+                  <strong>Late Night Service</strong>
                   <small>
-                    <a href="tel:9849073408" style={{ color: 'inherit' }}>9849073408</a>
+                    {formatTime12(storeHours.open_time)} – {formatTime12(storeHours.close_time)} (NPT)
                   </small>
                 </span>
               </div>

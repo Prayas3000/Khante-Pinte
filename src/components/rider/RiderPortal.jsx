@@ -31,7 +31,7 @@ import { currency, businessDate } from '@/utils/formatters';
 const formatAdminName = (val) => {
   if (!val) return 'Aayush';
   if (val.toLowerCase().includes('noobvak') || val.toLowerCase().includes('aayush')) return 'Aayush';
-  if (val.includes('@')) return val.split('@')[0];
+  if (val.includes('@')) return 'Aayush';
   return val;
 };
 
@@ -903,7 +903,7 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
                           </p>
                           <small style={{ opacity: 0.65, fontSize: 11 }}>
                             {new Date(p.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })} · {new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            {p.admin_email ? ` · Auth by ${p.admin_email}` : ''}
+                            {p.admin_email ? ` · Auth by ${formatAdminName(p.admin_email)}` : ''}
                           </small>
                         </div>
                         <div className="ledger-item-right" style={{ textAlign: 'right', flexShrink: 0, marginLeft: 8 }}>
