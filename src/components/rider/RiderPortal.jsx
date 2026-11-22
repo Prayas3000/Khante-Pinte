@@ -28,6 +28,13 @@ import {
 import { supabase } from '@/lib/supabase';
 import { currency, businessDate } from '@/utils/formatters';
 
+const formatAdminName = (val) => {
+  if (!val) return 'Aayush';
+  if (val.toLowerCase().includes('noobvak') || val.toLowerCase().includes('aayush')) return 'Aayush';
+  if (val.includes('@')) return val.split('@')[0];
+  return val;
+};
+
 export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCustomer }) {
   // Session state
   const [rider, setRider] = useState(() => {

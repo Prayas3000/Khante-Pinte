@@ -298,7 +298,7 @@ export function RiderManager({ riders = [], setRiders, orders = [] }) {
         p_amount: deductionAmount,
         p_type: 'payout',
         p_notes: debitNote,
-        p_admin_email: adminEmail
+        p_admin_email: 'Aayush'
       });
 
       if (rpcErr) throw rpcErr;
@@ -362,7 +362,7 @@ export function RiderManager({ riders = [], setRiders, orders = [] }) {
         p_amount: Math.abs(numAmount),
         p_type: creditType,
         p_notes: creditNote,
-        p_admin_email: adminEmail
+        p_admin_email: 'Aayush'
       });
 
       if (rpcErr) throw rpcErr;
@@ -1103,7 +1103,7 @@ export function RiderManager({ riders = [], setRiders, orders = [] }) {
                             {record.notes}
                           </strong>
                           <small style={{ color: 'var(--text-secondary, #64748b)' }}>
-                            {new Date(record.created_at).toLocaleString()} {record.admin_email ? `· by ${record.admin_email}` : ''}
+                            {new Date(record.created_at).toLocaleString()} {record.admin_email ? `· by ${record.admin_email.includes('noobvak') ? 'Aayush' : record.admin_email}` : ''}
                           </small>
                         </div>
                         <div style={{ textAlign: 'right' }}>
