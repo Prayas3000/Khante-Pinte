@@ -47,7 +47,7 @@ export function Header({
               className="nav-link-item nav-link-btn"
               onClick={onOpenOffers}
             >
-              Offers
+              Offers and Notification
             </button>
           )}
           <button
@@ -192,6 +192,23 @@ export function Header({
 
             {/* Quick Navigation Items */}
             <div className="mobile-nav-links">
+              {onOpenOffers && (
+                <button
+                  className="mobile-nav-link-btn"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onOpenOffers();
+                  }}
+                >
+                  <span className="mobile-nav-icon">🎁</span>
+                  <div>
+                    <strong>Offers and Notification</strong>
+                    <small>Discounts, festive greetings & announcements</small>
+                  </div>
+                  <ChevronRight size={18} className="mobile-link-chevron" />
+                </button>
+              )}
+
               <button
                 className="mobile-nav-link-btn"
                 onClick={() => {

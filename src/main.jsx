@@ -87,7 +87,7 @@ const CATEGORY_META = {
   },
   'Starter Menu 2': {
     displayName: 'Starter Menu 2',
-    image: 'https://images.unsplash.com/photo-1576107232684-1279f3908594?auto=format&fit=crop&w=400&q=80'
+    image: 'https://images.pexels.com/photos/1583884/pexels-photo-1583884.jpeg?auto=compress&cs=tinysrgb&w=800'
   }
 };
 
@@ -1742,7 +1742,15 @@ function App() {
                     }}
                   >
                     <div className="cat-photo-frame">
-                      <img src={cat.image} alt={cat.displayName} loading="lazy" />
+                      <img
+                        src={cat.image}
+                        alt={cat.displayName}
+                        loading="lazy"
+                        onError={e => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = 'https://images.pexels.com/photos/1583884/pexels-photo-1583884.jpeg?auto=compress&cs=tinysrgb&w=800';
+                        }}
+                      />
                     </div>
                     <span className="cat-card-name">{cat.displayName}</span>
                   </button>
