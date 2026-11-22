@@ -5835,17 +5835,93 @@ body {
 }
 
 @media (max-width: 640px) {
-  .benefits-ref-strip {
-    grid-template-columns: 1fr !important;
+  html, body {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+  }
+  .hero-ref-version {
+    padding: 26px 16px 36px !important;
+    border-radius: 0 0 24px 24px !important;
+    overflow: hidden !important;
+  }
+  .hero-title-top,
+  .hero-title-bottom {
+    font-size: clamp(26px, 7.5vw, 34px) !important;
+    letter-spacing: -0.5px !important;
+  }
+  .hero-subtitle-ref {
+    font-size: 14px !important;
+    margin-bottom: 20px !important;
   }
   .hero-actions-ref {
     flex-direction: column !important;
-    align-items: flex-start !important;
+    align-items: stretch !important;
     gap: 12px !important;
+    width: 100% !important;
+  }
+  .hero-location-pill {
+    font-size: 13.5px !important;
   }
   .hero-order-pill-cta {
     width: 100% !important;
     justify-content: center !important;
+    padding: 12px 20px !important;
+  }
+  .hero-biryani-photo {
+    height: 190px !important;
+    border-radius: 16px !important;
+  }
+  .hero-dish-glow {
+    width: 220px !important;
+    height: 220px !important;
+  }
+  .benefits-ref-strip {
+    grid-template-columns: 1fr !important;
+    padding: 16px !important;
+    gap: 12px !important;
+  }
+  .browse-category-section {
+    padding: 26px 16px 12px !important;
+  }
+  .browse-heading-text,
+  .popular-heading-text {
+    font-size: 20px !important;
+  }
+  .popular-picks-section {
+    padding: 16px 16px 32px !important;
+  }
+  .popular-card {
+    flex: 0 0 280px !important;
+    width: 280px !important;
+    grid-template-columns: 92px 1fr !important;
+    gap: 10px !important;
+    padding: 10px !important;
+    border-radius: 16px !important;
+  }
+  .popular-card-photo-box {
+    width: 92px !important;
+    height: 82px !important;
+    border-radius: 10px !important;
+  }
+  .popular-dish-name {
+    font-size: 13px !important;
+  }
+  .popular-price {
+    font-size: 13px !important;
+  }
+  .popular-add-btn {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+  }
+  .popular-nav-arrows {
+    display: none !important;
+  }
+  .login-card {
+    padding: 24px 18px !important;
+    border-radius: 18px !important;
+  }
+  .rider-portal-container {
+    padding: 14px 12px !important;
   }
 }
 
