@@ -4810,6 +4810,27 @@ body {
   color: var(--burgundy) !important;
 }
 
+[data-theme="dark"] .modal-head {
+  background: #252020 !important;
+  border-bottom: 1px solid #383030 !important;
+}
+
+[data-theme="dark"] .modal-head h2,
+[data-theme="dark"] .modal-head h3,
+[data-theme="dark"] .modal-head h1 {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .modal-head .eyebrow {
+  color: #f2a13a !important;
+}
+
+[data-theme="dark"] .modal-head .icon-btn {
+  background: #1c1818 !important;
+  border-color: #383030 !important;
+  color: #ffffff !important;
+}
+
 .checkout-item {
   background: #FFFFFF !important;
   border: 1px solid var(--line) !important;
@@ -4991,10 +5012,18 @@ body {
 }
 
 /* Nav items */
-.main-nav {
-  display: flex !important;
-  align-items: center !important;
-  gap: 26px !important;
+@media (min-width: 861px) {
+  .main-nav {
+    display: flex !important;
+    align-items: center !important;
+    gap: 26px !important;
+  }
+}
+
+@media (max-width: 860px) {
+  .main-nav {
+    display: none !important;
+  }
 }
 
 .nav-pill-home {
@@ -6277,6 +6306,7 @@ body {
 }
 
 [data-theme="dark"] .auth-modal .modal-head {
+  background: #252020 !important;
   border-bottom-color: #383030 !important;
 }
 
@@ -6401,36 +6431,56 @@ body {
   color: #b5aaa8 !important;
 }
 
+.auth-modal .text-link,
+.auth-modal .guest-note .text-link {
+  color: #87383b !important;
+  font-weight: 700 !important;
+  background: none !important;
+  border: none !important;
+  padding: 4px 0 !important;
+  cursor: pointer !important;
+  font-size: 13.5px !important;
+  display: inline-block !important;
+  text-align: left !important;
+}
+
+.auth-modal .text-link:hover,
+.auth-modal .guest-note .text-link:hover {
+  text-decoration: underline !important;
+}
+
+[data-theme="dark"] .auth-modal .text-link,
+[data-theme="dark"] .auth-modal .guest-note .text-link {
+  color: #f2a13a !important;
+}
+
+[data-theme="dark"] .auth-modal .text-link:hover,
+[data-theme="dark"] .auth-modal .guest-note .text-link:hover {
+  color: #ffa726 !important;
+}
+
 .auth-modal .guest-note {
   text-align: center !important;
-  margin: 12px 0 4px !important;
+  margin: 14px 0 4px !important;
   font-size: 13px !important;
   color: #685f5d !important;
 }
 
 [data-theme="dark"] .auth-modal .guest-note {
-  color: #b5aaa8 !important;
-}
-
-.auth-modal .guest-note .text-link {
-  color: #87383b !important;
-  font-weight: 700 !important;
-}
-
-[data-theme="dark"] .auth-modal .guest-note .text-link {
-  color: #f2a13a !important;
+  color: #f8ebe0 !important;
 }
 
 .auth-modal .prototype-note {
   display: block !important;
   text-align: center !important;
-  margin-top: 12px !important;
-  font-size: 11.5px !important;
-  color: #9c9492 !important;
+  margin-top: 14px !important;
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+  color: #7a706e !important;
 }
 
 [data-theme="dark"] .auth-modal .prototype-note {
-  color: #807674 !important;
+  color: #d8cdc7 !important;
 }
 
 /* 4. Mobile Responsive Polish */
@@ -6460,4 +6510,258 @@ body {
     padding: 24px 18px !important;
     border-radius: 20px !important;
   }
+}
+
+/* ==========================================================================
+   Khante Pinte Complete Responsive & Dark Mode Polish System
+   ========================================================================== */
+
+/* 1. Header & Navigation Mobile-First Responsiveness */
+@media (max-width: 860px) {
+  .site-header {
+    height: 62px !important;
+    padding: 0 14px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    max-width: 100vw !important;
+    overflow: hidden !important;
+  }
+
+  .main-nav {
+    display: none !important;
+  }
+
+  .brand {
+    gap: 8px !important;
+    min-width: 0 !important;
+    flex-shrink: 1 !important;
+  }
+
+  .kp-header-logo {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 10px !important;
+  }
+
+  .brand-text-block {
+    display: flex !important;
+    flex-direction: column !important;
+    min-width: 0 !important;
+  }
+
+  .brand-name {
+    font-size: 15px !important;
+    letter-spacing: 0.5px !important;
+    white-space: nowrap !important;
+  }
+
+  .header-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .header-actions .icon-btn,
+  .header-actions .theme-toggle-btn,
+  .header-actions .header-cart-btn {
+    width: 38px !important;
+    height: 38px !important;
+    padding: 8px !important;
+    border-radius: 10px !important;
+  }
+
+  .mobile-menu {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 38px !important;
+    height: 38px !important;
+    padding: 8px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .site-header {
+    height: 58px !important;
+    padding: 0 10px !important;
+  }
+
+  .brand-tagline {
+    display: none !important;
+  }
+
+  .brand-name {
+    font-size: 14.5px !important;
+  }
+
+  .kp-header-logo {
+    width: 34px !important;
+    height: 34px !important;
+  }
+
+  .header-actions {
+    gap: 5px !important;
+  }
+
+  .header-actions .icon-btn,
+  .header-actions .theme-toggle-btn,
+  .header-actions .header-cart-btn,
+  .header-actions .mobile-menu {
+    width: 36px !important;
+    height: 36px !important;
+    padding: 7px !important;
+  }
+
+  .header-login-pill span {
+    display: none !important;
+  }
+
+  .header-login-pill {
+    padding: 8px 10px !important;
+    height: 36px !important;
+    border-radius: 10px !important;
+  }
+
+  .benefits {
+    grid-template-columns: 1fr 1fr !important;
+    padding: 16px 14px !important;
+    gap: 12px !important;
+  }
+
+  .benefits strong {
+    font-size: 12px !important;
+  }
+
+  .benefits small {
+    font-size: 10px !important;
+  }
+}
+
+@media (max-width: 350px) {
+  .food-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+}
+
+/* 2. Dark Mode Modals & Surfaces Contrast Overhaul */
+[data-theme="dark"] .menu-item-modal {
+  background: #252020 !important;
+  color: #f8ebe0 !important;
+  border: 1px solid #383030 !important;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7) !important;
+}
+
+[data-theme="dark"] .menu-item-modal-content h2 {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .menu-item-modal-price {
+  color: #f2a13a !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="dark"] .menu-item-modal-content p {
+  color: #d8cdc7 !important;
+}
+
+[data-theme="dark"] .menu-item-close {
+  background: #1c1818 !important;
+  color: #ffffff !important;
+  border: 1px solid #383030 !important;
+}
+
+[data-theme="dark"] .account-panel-head {
+  background: #1c1818 !important;
+  border-bottom: 1px solid #383030 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .account-panel-head h2 {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .account-welcome-label {
+  color: #f2a13a !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="dark"] .account-stats strong {
+  color: #f2a13a !important;
+}
+
+[data-theme="dark"] .account-tabs button.active {
+  color: #f2a13a !important;
+  background: rgba(242, 161, 58, 0.15) !important;
+}
+
+[data-theme="dark"] .tracking-modal,
+[data-theme="dark"] .checkout-modal {
+  background: #1c1818 !important;
+  color: #f8ebe0 !important;
+}
+
+[data-theme="dark"] .tracking-tabs-bar {
+  background: #252020 !important;
+  border-bottom-color: #383030 !important;
+}
+
+[data-theme="dark"] .tracking-tab-btn {
+  color: #b5aaa8 !important;
+}
+
+[data-theme="dark"] .tracking-tab-btn.active {
+  color: #f2a13a !important;
+  border-bottom-color: #f2a13a !important;
+}
+
+[data-theme="dark"] .signed-tracking-note {
+  background: #252020 !important;
+  color: #f2a13a !important;
+  border: 1px solid #383030 !important;
+}
+
+[data-theme="dark"] .tracking-rider-card {
+  background: #252020 !important;
+  border-color: #383030 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .tracking-rider-card strong {
+  color: #ffffff !important;
+}
+
+/* 3. Admin & Staff Opening Page Dark Mode Contrast */
+[data-theme="dark"] .welcome-row h2 {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .welcome-row p {
+  color: #d8cdc7 !important;
+}
+
+[data-theme="dark"] .admin-topbar .eyebrow {
+  color: #f2a13a !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="dark"] .shift-chip {
+  background: #252020 !important;
+  border-color: #383030 !important;
+  color: #f2a13a !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="dark"] .stat-card small {
+  color: #d8cdc7 !important;
+}
+
+[data-theme="dark"] .order-detail-meta strong {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .order-detail-meta small {
+  color: #b5aaa8 !important;
 }
