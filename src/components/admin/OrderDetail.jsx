@@ -179,20 +179,29 @@ export function OrderDetail({
           <select
             value={o.rider || ''}
             onChange={e => assignRider(o.id, e.target.value)}
-            style={{ fontWeight: o.rider ? '600' : 'normal', minWidth: 210 }}
+            style={{ fontWeight: o.rider ? '600' : 'normal', minWidth: 220 }}
           >
-            <option value="">-- Assign Rider --</option>
-            {riders.map(rider => {
-              const rName = typeof rider === 'string' ? rider : rider.name;
-              const activeCount = riderActiveCounts[rName] || 0;
-              const isCurrent = o.rider === rName;
-              const statusText = activeCount === 0 ? '🟢 Available (0 active)' : `🟡 ${activeCount} active ${activeCount === 1 ? 'order' : 'orders'}`;
-              return (
-                <option key={rName} value={rName}>
-                  {isCurrent ? `✓ ${rName} • ${statusText} (Assigned)` : `${rName} • ${statusText}`}
-                </option>
-              );
-            })}
+            <option value="">-- Assign Rider (On Duty Only) --</option>
+            {riders
+              .filter(rider => {
+                const rName = typeof rider === 'string' ? rider : rider.name;
+                const isOnDuty = typeof rider === 'object' ? rider.is_on_duty !== false : true;
+                // Only show on-duty riders, unless this order was already assigned to this rider
+                return isOnDuty || o.rider === rName;
+              })
+              .map(rider => {
+                const rName = typeof rider === 'string' ? rider : rider.name;
+                const isOnDuty = typeof rider === 'object' ? rider.is_on_duty !== false : true;
+                const activeCount = riderActiveCounts[rName] || 0;
+                const isCurrent = o.rider === rName;
+                const statusText = activeCount === 0 ? '🟢 Available (0 active)' : `🟡 ${activeCount} active ${activeCount === 1 ? 'order' : 'orders'}`;
+                const dutyLabel = isOnDuty ? '' : ' [OFF DUTY]';
+                return (
+                  <option key={rName} value={rName}>
+                    {isCurrent ? `✓ ${rName}${dutyLabel} • ${statusText} (Assigned)` : `${rName}${dutyLabel} • ${statusText}`}
+                  </option>
+                );
+              })}
           </select>
         )}
         {o.status !== 'Cancelled' &&

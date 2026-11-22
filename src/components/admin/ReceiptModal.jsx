@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Printer, X } from 'lucide-react';
+import { Printer, X, ChefHat, Receipt } from 'lucide-react';
 import { currency } from '@/utils/formatters';
 
 export function ReceiptModal({ order: o, onClose }) {
@@ -11,203 +11,149 @@ export function ReceiptModal({ order: o, onClose }) {
 
   if (!o) return null;
 
+  const displayOrderCode = o.orderCode || o.id;
+
   return (
-    <div className="modal-backdrop" style={{
-      position: 'fixed',
-      inset: 0,
-      zIndex: 13000,
-      background: 'rgba(12, 18, 28, 0.75)',
-      backdropFilter: 'blur(4px)',
-      display: 'grid',
-      placeItems: 'center',
-      padding: 16
-    }}>
-      <div style={{
-        background: '#fff',
-        borderRadius: 16,
-        width: 'min(420px, 100%)',
-        maxHeight: '90vh',
-        display: 'flex',
-        flexDirection: 'column',
-        boxShadow: '0 24px 70px rgba(0,0,0,0.3)',
-        overflow: 'hidden'
-      }}>
+    <div className="receipt-modal-backdrop" onClick={onClose}>
+      <div className="receipt-modal-card" onClick={e => e.stopPropagation()}>
         {/* Modal Controls (Hidden in Print) */}
-        <div className="no-print" style={{
-          padding: '14px 18px',
-          borderBottom: '1px solid #e5e7eb',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          background: '#f8fafc'
-        }}>
-          <div style={{ display: 'flex', gap: 8 }}>
+        <div className="receipt-modal-header no-print">
+          <div className="receipt-mode-toggles">
             <button
-              className={mode === 'full' ? 'btn-primary' : 'btn-outline'}
-              style={{ padding: '6px 12px', fontSize: 12 }}
+              type="button"
+              className={`receipt-mode-btn ${mode === 'full' ? 'active' : ''}`}
               onClick={() => setMode('full')}
             >
-              Customer Receipt
+              <Receipt size={14} />
+              <span>Customer Receipt</span>
             </button>
             <button
-              className={mode === 'kot' ? 'btn-primary' : 'btn-outline'}
-              style={{ padding: '6px 12px', fontSize: 12 }}
+              type="button"
+              className={`receipt-mode-btn ${mode === 'kot' ? 'active' : ''}`}
               onClick={() => setMode('kot')}
             >
-              Kitchen (KOT)
+              <ChefHat size={14} />
+              <span>Kitchen Ticket (KOT)</span>
             </button>
           </div>
-          <button className="icon-btn" onClick={onClose} aria-label="Close">
+          <button className="icon-btn receipt-close-btn" onClick={onClose} aria-label="Close">
             <X size={18} />
           </button>
         </div>
 
-        {/* Printable Receipt Paper */}
-        <div style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '24px 20px',
-          background: '#f1f5f9',
-          display: 'grid',
-          placeItems: 'center'
-        }}>
-          <div className="kp-thermal-receipt" style={{
-            width: '100%',
-            maxWidth: '300px',
-            background: '#fff',
-            padding: '20px 16px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-            fontFamily: 'Courier, "Courier New", monospace',
-            color: '#000',
-            fontSize: '12px',
-            lineHeight: 1.4
-          }}>
+        {/* Printable Receipt Paper Container */}
+        <div className="receipt-paper-wrapper">
+          <div className="kp-thermal-receipt">
             {/* Header */}
-            <div style={{ textAlign: 'center', marginBottom: 12 }}>
-              <div style={{ fontSize: '18px', fontWeight: 'bold', letterSpacing: '1px' }}>
-                KHANTE PINTE
-              </div>
-              <div style={{ fontSize: '11px', marginTop: 2 }}>Late Night Food Delivery</div>
-              <div style={{ fontSize: '11px' }}>Buspark, Biratnagar, Nepal</div>
-              <div style={{ fontSize: '11px' }}>Tel: 9849073408 · 9822551213</div>
-              <div style={{ fontSize: '10px', marginTop: 2 }}>Hours: 9:00 PM – 4:00 AM NPT</div>
+            <div className="thermal-header">
+              <div className="thermal-brand">KHANTE PINTE</div>
+              <div className="thermal-sub">Late Night Food Delivery</div>
+              <div className="thermal-sub">Buspark, Biratnagar, Nepal</div>
+              <div className="thermal-sub">Tel: 9849073408 · 9822551213</div>
+              <div className="thermal-hours">Hours: 9:00 PM – 4:00 AM NPT</div>
+
               {mode === 'kot' && (
-                <div style={{
-                  marginTop: 6,
-                  padding: '3px 0',
-                  background: '#000',
-                  color: '#fff',
-                  fontWeight: 'bold',
-                  fontSize: '13px'
-                }}>
+                <div className="thermal-kot-banner">
                   *** KITCHEN ORDER TICKET (KOT) ***
                 </div>
               )}
             </div>
 
-            <div style={{ borderTop: '1px dashed #000', margin: '8px 0' }} />
+            <div className="thermal-dashed-divider" />
 
-            {/* Order Meta */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
-                <span>ORDER: {o.orderCode || o.id} {o.seq ? `(#${o.seq})` : ''}</span>
-                <span>[{o.type.toUpperCase()}]</span>
+            {/* Order Details */}
+            <div className="thermal-order-meta">
+              <div className="thermal-row">
+                <strong>ORDER: {displayOrderCode} {o.seq ? `(#${o.seq})` : ''}</strong>
+                <strong>[{String(o.type || 'delivery').toUpperCase()}]</strong>
               </div>
-              <div>Date: {new Date(o.createdAt).toLocaleString('en-US', { hour12: true })}</div>
-              <div>Source: {o.source}</div>
-              <div>Customer: <strong>{o.customer}</strong></div>
-              <div>Phone: <strong>{o.phone}</strong></div>
-              {o.address && (
-                <div>Address: {o.address}</div>
-              )}
-              {o.rider && (
-                <div>Rider: {o.rider} ({o.riderPhone})</div>
-              )}
-            </div>
+              <div className="thermal-row">
+                <span>Date: {new Date(o.createdAt).toLocaleDateString()}</span>
+                <span>{new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+              <div className="thermal-row">
+                <span>Source: {o.source || 'Website'}</span>
+              </div>
 
-            {o.note && (
-              <>
-                <div style={{ borderTop: '1px dashed #000', margin: '6px 0' }} />
-                <div style={{ fontWeight: 'bold', fontSize: '11px' }}>
-                  NOTE: {o.note}
+              <div className="thermal-customer-block">
+                <div><strong>Customer:</strong> {o.customer}</div>
+                <div><strong>Phone:</strong> {o.phone}</div>
+                {o.type === 'Delivery' && o.address && (
+                  <div><strong>Address:</strong> {o.address}</div>
+                )}
+                {o.rider && (
+                  <div><strong>Rider:</strong> {o.rider} {o.riderPhone ? `(${o.riderPhone})` : ''}</div>
+                )}
+              </div>
+
+              {o.note && (
+                <div className="thermal-note-box">
+                  <strong>NOTE:</strong> {o.note}
                 </div>
-              </>
-            )}
-
-            <div style={{ borderTop: '1px dashed #000', margin: '8px 0' }} />
-
-            {/* Items Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginBottom: 4 }}>
-              <span style={{ width: '28px' }}>QTY</span>
-              <span style={{ flex: 1, paddingLeft: 4 }}>ITEM</span>
-              {mode === 'full' && <span style={{ width: '60px', textAlign: 'right' }}>AMT</span>}
+              )}
             </div>
-            <div style={{ borderTop: '1px solid #000', marginBottom: 6 }} />
 
-            {/* Items List */}
-            <div style={{ display: 'grid', gap: 4 }}>
-              {o.items.map((item, idx) => (
-                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <span style={{ width: '28px', fontWeight: 'bold' }}>{item.qty}x</span>
-                  <span style={{ flex: 1, paddingLeft: 4, fontWeight: mode === 'kot' ? 'bold' : 'normal' }}>
-                    {item.name}
-                  </span>
+            <div className="thermal-dashed-divider" />
+
+            {/* Items Table */}
+            <div className="thermal-items-header">
+              <span>QTY</span>
+              <span>ITEM</span>
+              {mode === 'full' && <span style={{ textAlign: 'right' }}>AMT</span>}
+            </div>
+            <div className="thermal-dashed-divider" />
+
+            <div className="thermal-items-list">
+              {(o.items || []).map((item, idx) => (
+                <div key={idx} className="thermal-item-row">
+                  <span className="thermal-item-qty">{item.qty}x</span>
+                  <span className="thermal-item-name">{item.name}</span>
                   {mode === 'full' && (
-                    <span style={{ width: '60px', textAlign: 'right' }}>
-                      {item.price * item.qty}
-                    </span>
+                    <span className="thermal-item-amt">{Number(item.price * item.qty).toLocaleString('en-IN')}</span>
                   )}
                 </div>
               ))}
             </div>
 
-            {/* Financials (Customer Mode Only) */}
+            <div className="thermal-dashed-divider" />
+
+            {/* Totals & Payment (Customer Receipt Only) */}
             {mode === 'full' && (
-              <>
-                <div style={{ borderTop: '1px dashed #000', margin: '10px 0 6px' }} />
-                <div style={{ display: 'grid', gap: 2, fontSize: '11px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Subtotal:</span>
-                    <span>{currency(o.subtotal)}</span>
-                  </div>
-                  {o.delivery > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Delivery Fee:</span>
-                      <span>{currency(o.delivery)}</span>
-                    </div>
-                  )}
-                  {o.discount > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Discount:</span>
-                      <span>−{currency(o.discount)}</span>
-                    </div>
-                  )}
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    fontWeight: 'bold',
-                    fontSize: '14px',
-                    borderTop: '1px solid #000',
-                    paddingTop: 4,
-                    marginTop: 2
-                  }}>
-                    <span>TOTAL:</span>
-                    <span>{currency(o.total)}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-                    <span>Payment:</span>
-                    <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>
-                      {(o.payment || 'cash').replaceAll('_', ' ')} ({o.paymentStatus || 'unpaid'})
-                    </span>
-                  </div>
+              <div className="thermal-totals-block">
+                <div className="thermal-row">
+                  <span>Subtotal:</span>
+                  <span>{currency(o.subtotal)}</span>
                 </div>
-              </>
+                {Number(o.delivery || 0) > 0 && (
+                  <div className="thermal-row">
+                    <span>Delivery Fee:</span>
+                    <span>+{currency(o.delivery)}</span>
+                  </div>
+                )}
+                {Number(o.discount || 0) > 0 && (
+                  <div className="thermal-row">
+                    <span>Discount:</span>
+                    <span>−{currency(o.discount)}</span>
+                  </div>
+                )}
+                <div className="thermal-dashed-divider" />
+                <div className="thermal-row thermal-grand-total">
+                  <span>TOTAL:</span>
+                  <span>{currency(o.total)}</span>
+                </div>
+                <div className="thermal-row thermal-pay-row">
+                  <span>Payment:</span>
+                  <span className="thermal-pay-status">
+                    {(o.payment || 'cash').toUpperCase()} ({String(o.paymentStatus || 'unpaid').toUpperCase()})
+                  </span>
+                </div>
+              </div>
             )}
 
-            <div style={{ borderTop: '1px dashed #000', margin: '12px 0 8px' }} />
+            <div className="thermal-dashed-divider" />
 
             {/* Footer */}
-            <div style={{ textAlign: 'center', fontSize: '10px' }}>
+            <div className="thermal-footer">
               <div>*** THANK YOU FOR CRAVING WITH US ***</div>
               <div style={{ marginTop: 2 }}>Order Online: khantepinte.com.np</div>
             </div>
@@ -215,21 +161,16 @@ export function ReceiptModal({ order: o, onClose }) {
         </div>
 
         {/* Action Bottom Bar (Hidden in Print) */}
-        <div className="no-print" style={{
-          padding: '14px 18px',
-          borderTop: '1px solid #e5e7eb',
-          display: 'flex',
-          gap: 10,
-          background: '#fff'
-        }}>
+        <div className="receipt-modal-footer no-print">
           <button
-            className="btn-primary"
-            style={{ flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 8 }}
+            type="button"
+            className="btn-primary receipt-print-btn"
             onClick={handlePrint}
           >
-            <Printer size={16} /> Print {mode === 'kot' ? 'KOT' : 'Receipt'}
+            <Printer size={16} />
+            <span>Print {mode === 'kot' ? 'KOT' : 'Receipt'}</span>
           </button>
-          <button className="btn-outline" onClick={onClose}>
+          <button type="button" className="btn-outline" onClick={onClose}>
             Close
           </button>
         </div>

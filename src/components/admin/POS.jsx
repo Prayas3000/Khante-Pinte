@@ -139,11 +139,16 @@ export function POS({ products, newOrder, riders, paymentMethods, deliveryFee })
           Rider
           <select value={rider} onChange={e => setRider(e.target.value)}>
             <option value="">Unassigned</option>
-            {riders.map(r => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
+            {riders
+              .filter(r => (typeof r === 'object' ? r.is_on_duty !== false : true))
+              .map(r => {
+                const rName = typeof r === 'string' ? r : r.name;
+                return (
+                  <option key={rName} value={rName}>
+                    {rName}
+                  </option>
+                );
+              })}
           </select>
         </label>
         <label>

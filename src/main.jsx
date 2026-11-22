@@ -673,14 +673,14 @@ function App() {
     const loadRiders = async () => {
       const { data, error } = await supabase
         .from('riders')
-        .select('id,name,phone,active')
+        .select('id,name,phone,active,is_on_duty,pay_type')
         .eq('active', true)
         .order('name');
       if (error) {
         console.error('Riders loading failed:', error);
         return;
       }
-      setRiders((data || []).map(r => r.name));
+      setRiders(data || []);
       setRiderIds(Object.fromEntries((data || []).map(r => [r.name, r.id])));
     };
     loadRiders();
@@ -764,6 +764,9 @@ function App() {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'order_status_history' }, () => {
         loadOrders(false);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'riders' }, () => {
+        loadRiders();
       })
       .subscribe(status => {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {

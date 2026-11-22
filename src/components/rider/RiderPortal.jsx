@@ -16,10 +16,14 @@ import {
   ChevronRight,
   Sun,
   Moon,
-  ExternalLink
+  ExternalLink,
+  Shield,
+  FileText,
+  Check,
+  Power
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { currency } from '@/utils/formatters';
+import { currency, businessDate } from '@/utils/formatters';
 
 export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCustomer }) {
   // Session state
@@ -38,7 +42,7 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
   const [loginError, setLoginError] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
 
-  // Portal tab state: 'active' | 'stats' | 'history'
+  // Portal tab state: 'active' | 'stats'
   const [tab, setTab] = useState('active');
   const [timeFilter, setTimeFilter] = useState('today'); // 'today' | 'week' | 'month' | 'all'
 
@@ -47,6 +51,7 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
   const [payouts, setPayouts] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
+  const [togglingDuty, setTogglingDuty] = useState(false);
   const [notice, setNotice] = useState('');
 
   // Auto-dismiss notice
@@ -100,6 +105,33 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
     localStorage.removeItem('kp_rider_session');
     setRider(null);
     setOrders([]);
+    setPayouts([]);
+  };
+
+  // Toggle On Duty / Off Duty
+  const handleToggleDuty = async () => {
+    if (!rider?.id || togglingDuty) return;
+    const nextDutyState = rider.is_on_duty === false ? true : false;
+    setTogglingDuty(true);
+    try {
+      const { data, error } = await supabase.rpc('rider_toggle_duty', {
+        p_rider_id: rider.id,
+        p_is_on_duty: nextDutyState
+      });
+
+      if (error) throw error;
+      if (data?.success) {
+        const updated = { ...rider, is_on_duty: nextDutyState };
+        setRider(updated);
+        localStorage.setItem('kp_rider_session', JSON.stringify(updated));
+        setNotice(nextDutyState ? '🟢 You are now ON DUTY (Available for deliveries)' : '🔴 You are now OFF DUTY (Resting)');
+      }
+    } catch (err) {
+      console.error('Toggle duty error:', err);
+      alert(`Could not toggle duty: ${err.message}`);
+    } finally {
+      setTogglingDuty(false);
+    }
   };
 
   // Load Rider Orders & Data
@@ -138,7 +170,7 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
       // 3. Refresh rider balance & pay info
       const { data: freshRider } = await supabase
         .from('riders')
-        .select('id, name, phone, pay_type, commission_per_order, balance, active')
+        .select('id, name, phone, pay_type, commission_per_order, balance, active, is_on_duty')
         .eq('id', rider.id)
         .maybeSingle();
 
@@ -147,20 +179,20 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
         localStorage.setItem('kp_rider_session', JSON.stringify({ ...rider, ...freshRider }));
       }
     } catch (err) {
-      console.error('Failed to load rider orders:', err);
+      console.error('Failed to load rider data:', err);
     } finally {
       if (showSpinner) setLoadingOrders(false);
     }
   };
 
-  // Initial load and real-time subscription
+  // Initial load and real-time subscription + periodic sync
   useEffect(() => {
     if (!rider?.id) return;
     loadRiderData(true);
 
     // Setup real-time listener for orders assigned to this rider
     const channel = supabase
-      .channel(`rider-orders-${rider.id}`)
+      .channel(`rider-live-${rider.id}`)
       .on(
         'postgres_changes',
         {
@@ -173,9 +205,27 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
           loadRiderData(false);
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'rider_payouts',
+          filter: `rider_id=eq.${rider.id}`
+        },
+        () => {
+          loadRiderData(false);
+        }
+      )
       .subscribe();
 
+    // Polling fallback every 8 seconds for rock-solid reliability
+    const interval = setInterval(() => {
+      loadRiderData(false);
+    }, 8000);
+
     return () => {
+      clearInterval(interval);
       supabase.removeChannel(channel);
     };
   }, [rider?.id]);
@@ -184,6 +234,11 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
   const updateStatus = async (orderId, newStatus) => {
     setUpdatingOrderId(orderId);
     try {
+      // Optimistic update
+      setOrders(current =>
+        current.map(o => (o.id === orderId ? { ...o, status: newStatus } : o))
+      );
+
       const { data, error } = await supabase.rpc('rider_update_order_status', {
         p_rider_id: rider.id,
         p_order_id: orderId,
@@ -193,18 +248,20 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
       if (error) throw error;
       if (!data || !data.success) {
         alert(data?.message || 'Could not update status');
+        await loadRiderData(false);
         return;
       }
 
       setNotice(
         newStatus === 'delivered'
-          ? '🎉 Order marked Delivered! Great job!'
+          ? '🎉 Order marked Delivered! Sales & earnings updated.'
           : '🛵 Order marked Out for Delivery!'
       );
       await loadRiderData(false);
     } catch (err) {
       console.error('Error updating status:', err);
       alert(`Update failed: ${err.message}`);
+      await loadRiderData(false);
     } finally {
       setUpdatingOrderId(null);
     }
@@ -217,19 +274,20 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
     );
   }, [orders]);
 
-  // Filtered orders for Statistics & History
+  // Filtered orders for Statistics & History (Reliable Nepal Business Date matching)
   const filteredOrders = useMemo(() => {
+    const todayBusinessDate = businessDate();
     const now = new Date();
-    // Nepal shift cutoff: starts 7 hours ago to cover night shift
-    const todayStr = new Date(now.getTime() - 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
     return orders.filter(o => {
-      if (o.status !== 'delivered') return false; // Only completed count for sales/earnings
+      const isDelivered = String(o.status || '').toLowerCase() === 'delivered';
+      if (!isDelivered) return false;
+
       const orderDate = new Date(o.created_at);
+      const orderBizDate = o.business_date || businessDate(orderDate);
 
       if (timeFilter === 'today') {
-        const orderBusinessDate = o.business_date || new Date(orderDate.getTime() - 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
-        return orderBusinessDate === todayStr;
+        return orderBizDate === todayBusinessDate;
       }
       if (timeFilter === 'week') {
         const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -248,7 +306,7 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
     const totalSales = filteredOrders.reduce((s, o) => s + Number(o.total || 0), 0);
     const totalDelivered = filteredOrders.length;
     
-    // COD Cash collected (unpaid online = cash on delivery)
+    // COD Cash collected (cash on delivery)
     const codCash = filteredOrders
       .filter(o => (o.payment_method || 'cash').toLowerCase() === 'cash')
       .reduce((s, o) => s + Number(o.total || 0), 0);
@@ -258,30 +316,33 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
       .filter(o => (o.payment_method || 'cash').toLowerCase() !== 'cash')
       .reduce((s, o) => s + Number(o.total || 0), 0);
 
-    // Earnings estimate for this filtered period
-    const periodEarnings = rider?.pay_type === 'salary'
-      ? payouts.reduce((s, p) => s + Number(p.amount || 0), 0)
+    // Earnings estimate for this filtered period:
+    // When rider is salary-based, per-order commission is 0.
+    const isSalary = rider?.pay_type === 'salary';
+    const periodCommission = isSalary
+      ? 0
       : totalDelivered * Number(rider?.commission_per_order || 50);
+
+    // Payout ledger total for this period
+    const totalPayoutsAllocated = payouts.reduce((s, p) => s + Number(p.amount || 0), 0);
 
     return {
       totalSales,
       totalDelivered,
       codCash,
       onlineSales,
-      periodEarnings
+      periodCommission,
+      isSalary,
+      totalPayoutsAllocated
     };
   }, [filteredOrders, payouts, rider]);
 
-  // Helper to open Google Maps navigation
+  // Helper to open Google Maps navigation (ONLY called when coordinates exist)
   const openMaps = (order) => {
-    let url = '';
     if (order.delivery_lat && order.delivery_lng) {
-      url = `https://www.google.com/maps/dir/?api=1&destination=${order.delivery_lat},${order.delivery_lng}`;
-    } else {
-      const cleanAddr = (order.delivery_address || '').trim();
-      url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(cleanAddr + ', Biratnagar')}`;
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${order.delivery_lat},${order.delivery_lng}`;
+      window.open(url, '_blank');
     }
-    window.open(url, '_blank');
   };
 
   // Helper to call customer
@@ -362,6 +423,8 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
     );
   }
 
+  const isOnDuty = rider.is_on_duty !== false;
+
   // -------------------------------------------------------------
   // RENDER: AUTHENTICATED RIDER PORTAL
   // -------------------------------------------------------------
@@ -376,19 +439,30 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
           <div>
             <div className="rider-name-row">
               <strong>{rider.name}</strong>
-              <span className="rider-status-dot">On Duty</span>
             </div>
             <small className="rider-phone-tag">{rider.phone || 'Biratnagar Fleet'}</small>
           </div>
         </div>
 
         <div className="rider-header-right">
+          {/* Duty Switch Button */}
+          <button
+            type="button"
+            className={`rider-duty-toggle-btn ${isOnDuty ? 'on' : 'off'}`}
+            onClick={handleToggleDuty}
+            disabled={togglingDuty}
+            title={isOnDuty ? 'Click to go Off Duty' : 'Click to go On Duty'}
+          >
+            <span className="duty-dot-indicator" />
+            <span>{isOnDuty ? 'ON DUTY' : 'OFF DUTY'}</span>
+          </button>
+
           {toggleTheme && (
             <button
               type="button"
               className="icon-btn rider-theme-btn"
               onClick={toggleTheme}
-              title={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             >
               {theme === 'dark' ? <Sun size={17} style={{ color: '#facc15' }} /> : <Moon size={17} />}
             </button>
@@ -422,6 +496,20 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
         </div>
       )}
 
+      {/* Duty Status Alert Banner when OFF DUTY */}
+      {!isOnDuty && (
+        <div className="rider-offduty-banner">
+          <Power size={16} />
+          <div>
+            <strong>You are currently OFF DUTY.</strong>
+            <small>The counter will not assign new deliveries to you until you toggle On Duty.</small>
+          </div>
+          <button type="button" className="btn-duty-rejoin" onClick={handleToggleDuty}>
+            Go On Duty
+          </button>
+        </div>
+      )}
+
       {/* Quick Summary Pill Bar */}
       <section className="rider-quick-stats">
         <div className="rider-quick-stat-item">
@@ -429,11 +517,11 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
           <strong>{activeOrders.length}</strong>
         </div>
         <div className="rider-quick-stat-item">
-          <span>Pay Type</span>
-          <strong>{rider.pay_type === 'salary' ? 'Salary' : 'Commission'}</strong>
+          <span>Model</span>
+          <strong>{rider.pay_type === 'salary' ? '💼 Salary' : '⚡ Commission'}</strong>
         </div>
         <div className="rider-quick-stat-item highlight">
-          <span>Total Balance</span>
+          <span>Account Balance</span>
           <strong>{currency(rider.balance || 0)}</strong>
         </div>
       </section>
@@ -455,7 +543,7 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
           onClick={() => setTab('stats')}
         >
           <TrendingUp size={17} />
-          <span>Sales & Earnings</span>
+          <span>Sales & Statements</span>
         </button>
       </nav>
 
@@ -466,7 +554,7 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
           <div className="rider-active-section">
             <div className="rider-section-title">
               <h3>Deliveries Assigned to You</h3>
-              <small>Live updates from kitchen & counter</small>
+              <small>Live sync with kitchen & admin counter</small>
             </div>
 
             {loadingOrders && !orders.length ? (
@@ -478,7 +566,11 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
               <div className="rider-empty-card">
                 <div className="rider-empty-icon">🛋️</div>
                 <h4>No active deliveries right now!</h4>
-                <p>You're all caught up. When counter assigns an order to you, it will pop up right here automatically.</p>
+                <p>
+                  {isOnDuty
+                    ? "You're all caught up. When counter assigns an order to you, it will pop up right here automatically."
+                    : "You are currently marked OFF DUTY. Turn On Duty above to receive delivery orders."}
+                </p>
                 <button
                   type="button"
                   className="btn-outline"
@@ -494,6 +586,7 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
                   const isOut = order.status === 'out_for_delivery';
                   const isCOD = (order.payment_method || 'cash').toLowerCase() === 'cash';
                   const orderCode = order.order_code || `KP-${order.order_number}`;
+                  const hasGpsLocation = Boolean(order.delivery_lat && order.delivery_lng);
 
                   return (
                     <article className={`rider-order-card ${isOut ? 'out-route' : ''}`} key={order.id}>
@@ -523,8 +616,10 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
                           <MapPin size={18} className="rider-pin-icon" />
                           <div>
                             <p className="rider-address-text">{order.delivery_address || 'Address provided on call'}</p>
-                            {order.delivery_lat && order.delivery_lng && (
-                              <span className="rider-gps-pill">📍 GPS Coordinates Available</span>
+                            {hasGpsLocation ? (
+                              <span className="rider-gps-pill">📍 GPS Location Shared by Customer</span>
+                            ) : (
+                              <span className="rider-manual-pill">📍 Street & Landmark (No GPS Pin)</span>
                             )}
                           </div>
                         </div>
@@ -570,16 +665,18 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
                         )}
                       </div>
 
-                      {/* Action Buttons Row */}
-                      <div className="rider-actions-grid">
-                        <button
-                          type="button"
-                          className="rider-btn-nav"
-                          onClick={() => openMaps(order)}
-                        >
-                          <Navigation size={18} />
-                          <span>Open in Google Maps</span>
-                        </button>
+                      {/* Action Buttons Row: Google Maps only if user actually selected GPS location */}
+                      <div className={`rider-actions-grid ${!hasGpsLocation ? 'single-call-btn' : ''}`}>
+                        {hasGpsLocation && (
+                          <button
+                            type="button"
+                            className="rider-btn-nav"
+                            onClick={() => openMaps(order)}
+                          >
+                            <Navigation size={18} />
+                            <span>Open in Google Maps</span>
+                          </button>
+                        )}
 
                         <button
                           type="button"
@@ -631,7 +728,7 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
           </div>
         )}
 
-        {/* TAB 2: SALES, EARNINGS & COMPENSATIONS */}
+        {/* TAB 2: SALES, STATEMENTS & COMPENSATION */}
         {tab === 'stats' && (
           <div className="rider-stats-section">
             {/* Period Filter Buttons */}
@@ -669,58 +766,72 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
             {/* Metric Cards Grid */}
             <div className="rider-metrics-grid">
               <div className="rider-metric-card revenue">
-                <span className="metric-label">Sales Generated</span>
+                <span className="metric-label">Total Sales Generated</span>
                 <strong className="metric-val">{currency(statsSummary.totalSales)}</strong>
                 <small className="metric-sub">{statsSummary.totalDelivered} orders delivered</small>
               </div>
 
               <div className="rider-metric-card earnings">
                 <span className="metric-label">
-                  {rider.pay_type === 'salary' ? 'Allocated Pay' : 'Commission Earned'}
+                  {statsSummary.isSalary ? 'Compensation Model' : 'Commission Earned'}
                 </span>
-                <strong className="metric-val">{currency(statsSummary.periodEarnings)}</strong>
+                <strong className="metric-val">
+                  {statsSummary.isSalary ? 'Fixed Salary' : currency(statsSummary.periodCommission)}
+                </strong>
                 <small className="metric-sub">
-                  {rider.pay_type === 'salary'
-                    ? 'Salary / credits'
-                    : `Rs. ${rider.commission_per_order || 50} per delivery`}
+                  {statsSummary.isSalary
+                    ? 'Salary allocated by counter'
+                    : `Rs. ${rider.commission_per_order || 50} per delivered order`}
                 </small>
               </div>
 
               <div className="rider-metric-card cod">
                 <span className="metric-label">COD Cash Collected</span>
                 <strong className="metric-val">{currency(statsSummary.codCash)}</strong>
-                <small className="metric-sub">Cash to hand over to counter</small>
+                <small className="metric-sub">Physical cash to hand over</small>
               </div>
 
               <div className="rider-metric-card online">
-                <span className="metric-label">Online Paid</span>
+                <span className="metric-label">Online Payments</span>
                 <strong className="metric-val">{currency(statsSummary.onlineSales)}</strong>
-                <small className="metric-sub">Pre-paid directly via QR</small>
+                <small className="metric-sub">Paid directly via QR / eSewa</small>
               </div>
             </div>
 
             {/* Rider Account Allocation / Payout History */}
             <div className="rider-ledger-box">
               <div className="ledger-title-row">
-                <h4>Compensation & Payout Ledger</h4>
-                <span className="ledger-badge">Account Balance: {currency(rider.balance || 0)}</span>
+                <div>
+                  <h4>Account Statement & Passbook</h4>
+                  <small>Detailed ledger of commissions, salaries & cash payouts</small>
+                </div>
+                <span className="ledger-badge">Balance: {currency(rider.balance || 0)}</span>
               </div>
 
               {payouts.length === 0 ? (
                 <p className="rider-ledger-empty">No payout or compensation transactions recorded yet.</p>
               ) : (
                 <div className="rider-ledger-list">
-                  {payouts.slice(0, 15).map(p => (
-                    <div className="rider-ledger-item" key={p.id}>
-                      <div>
-                        <strong>{p.notes || p.type.toUpperCase()}</strong>
-                        <small>{new Date(p.created_at).toLocaleString()}</small>
+                  {payouts.map(p => {
+                    const isPositive = Number(p.amount) >= 0;
+                    return (
+                      <div className="rider-ledger-item" key={p.id}>
+                        <div className="ledger-item-left">
+                          <strong>{p.notes || String(p.type || 'payment').toUpperCase()}</strong>
+                          <small>
+                            {new Date(p.created_at).toLocaleDateString()} · {new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {p.admin_email ? ` (by ${p.admin_email})` : ''}
+                          </small>
+                        </div>
+                        <div className="ledger-item-right">
+                          <span className={`ledger-amount ${isPositive ? 'plus' : 'minus'}`}>
+                            {isPositive ? '+' : ''}{currency(p.amount)}
+                          </span>
+                          <span className="ledger-type-tag">{p.type}</span>
+                        </div>
                       </div>
-                      <span className={`ledger-amount ${Number(p.amount) >= 0 ? 'plus' : 'minus'}`}>
-                        {Number(p.amount) >= 0 ? '+' : ''}{currency(p.amount)}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -728,8 +839,10 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
             {/* Completed Orders List in Selected Period */}
             <div className="rider-history-box">
               <div className="ledger-title-row">
-                <h4>Completed Deliveries ({filteredOrders.length})</h4>
-                <small>Showing {timeFilter} shift</small>
+                <div>
+                  <h4>Delivered Orders Breakdown ({filteredOrders.length})</h4>
+                  <small>Orders completed in {timeFilter} shift</small>
+                </div>
               </div>
 
               {filteredOrders.length === 0 ? (
@@ -740,14 +853,17 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
                     <div className="rider-history-item" key={ord.id}>
                       <div className="history-left">
                         <strong>{ord.order_code || `KP-${ord.order_number}`}</strong>
-                        <span>{ord.customer_name}</span>
-                        <small>{new Date(ord.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small>
+                        <span className="history-cust-name">{ord.customer_name}</span>
+                        <small>{new Date(ord.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {ord.delivery_address || 'Biratnagar'}</small>
                       </div>
                       <div className="history-right">
-                        <strong>{currency(ord.total)}</strong>
+                        <strong className="history-order-amt">{currency(ord.total)}</strong>
                         <span className={`history-pay-tag ${ord.payment_method}`}>
                           {ord.payment_method === 'cash' ? '💵 COD' : '✅ Online'}
                         </span>
+                        {!statsSummary.isSalary && (
+                          <small className="history-comm-tag">+{currency(rider.commission_per_order || 50)} comm.</small>
+                        )}
                       </div>
                     </div>
                   ))}
