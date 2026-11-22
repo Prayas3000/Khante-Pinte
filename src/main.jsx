@@ -394,14 +394,33 @@ function App() {
   const [view, setView] = useState(() => {
     const host = window.location.hostname;
     const path = window.location.pathname;
-    if (host.startsWith('rider.') || path.startsWith('/rider')) {
+    const hash = window.location.hash || '';
+    if (host.startsWith('rider.') || path.startsWith('/rider') || hash === '#rider' || hash.startsWith('#/rider')) {
       return 'rider';
     }
-    if (host.startsWith('admin.') || path.startsWith('/admin')) {
+    if (host.startsWith('admin.') || path.startsWith('/admin') || hash === '#admin' || hash.startsWith('#/admin')) {
       return 'admin';
     }
     return 'customer';
   });
+
+  useEffect(() => {
+    const handleHashOrUrl = () => {
+      const path = window.location.pathname;
+      const hash = window.location.hash || '';
+      if (path.startsWith('/rider') || hash === '#rider' || hash.startsWith('#/rider')) {
+        setView('rider');
+      } else if (path.startsWith('/admin') || hash === '#admin' || hash.startsWith('#/admin')) {
+        setView('admin');
+      }
+    };
+    window.addEventListener('hashchange', handleHashOrUrl);
+    window.addEventListener('popstate', handleHashOrUrl);
+    return () => {
+      window.removeEventListener('hashchange', handleHashOrUrl);
+      window.removeEventListener('popstate', handleHashOrUrl);
+    };
+  }, []);
 
   useEffect(() => {
     const isProdCustomer = ['khantepinte.com.np', 'www.khantepinte.com.np'].includes(window.location.hostname);
@@ -1531,7 +1550,6 @@ function App() {
             setMenuOpen={setMenuOpen}
             theme={theme}
             toggleTheme={toggleTheme}
-            onGoToRider={() => setView('rider')}
             onOpenOffers={() => setShowOfferModal(true)}
           />
 
@@ -1625,10 +1643,16 @@ function App() {
                 </p>
 
                 <div className="hero-actions-ref">
-                  <div className="hero-location-pill">
+                  <a
+                    href="https://share.google/eDgzyz5jvFsLGEHHU"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hero-location-pill"
+                    title="View Khante Pinte on Google Maps"
+                  >
                     <MapPin size={17} />
-                    <span>Buspark, Biratnagar</span>
-                  </div>
+                    <span>Buspark, Biratnagar ↗</span>
+                  </a>
                   <a href="#menu" className="hero-order-pill-cta">
                     <Bike size={19} />
                     <span>Order Now →</span>
@@ -1926,7 +1950,6 @@ function App() {
             <Footer
               brandLogo={brandLogo}
               storeHours={storeHours}
-              onGoToRider={() => setView('rider')}
             />
           </main>
 
@@ -2242,7 +2265,7 @@ function App() {
             />
           )}
 
-          {showOfferModal && activeOffer?.active && activeOffer?.image_url && (
+          {showOfferModal && (
             <OfferModal
               offer={activeOffer}
               onClose={() => setShowOfferModal(false)}

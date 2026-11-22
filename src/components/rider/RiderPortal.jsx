@@ -35,13 +35,29 @@ const formatAdminName = (val) => {
   return val;
 };
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const SESSION_MAX_AGE_MS = 12 * 60 * 60 * 1000; // 12-hour session security lifetime
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_SECONDS = 300; // 5-minute lockout
+
 export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCustomer }) {
-  // Session state
+  // Session state with UUID validation & expiry check
   const [rider, setRider] = useState(() => {
     try {
       const saved = localStorage.getItem('kp_rider_session');
-      return saved ? JSON.parse(saved) : null;
+      if (!saved) return null;
+      const parsed = JSON.parse(saved);
+      if (!parsed?.id || !UUID_REGEX.test(parsed.id)) {
+        localStorage.removeItem('kp_rider_session');
+        return null;
+      }
+      if (parsed.session_created_at && Date.now() - Number(parsed.session_created_at) > SESSION_MAX_AGE_MS) {
+        localStorage.removeItem('kp_rider_session');
+        return null;
+      }
+      return parsed;
     } catch {
+      localStorage.removeItem('kp_rider_session');
       return null;
     }
   });
@@ -51,6 +67,32 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
   const [passwordInput, setPasswordInput] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
+
+  // Login Rate Limiting & Lockout State (persisted in sessionStorage)
+  const [lockoutRemaining, setLockoutRemaining] = useState(() => {
+    try {
+      const lockUntil = Number(sessionStorage.getItem('kp_rider_lockout_until') || 0);
+      const diff = Math.ceil((lockUntil - Date.now()) / 1000);
+      return diff > 0 ? diff : 0;
+    } catch {
+      return 0;
+    }
+  });
+
+  // Countdown timer for lockout
+  useEffect(() => {
+    if (lockoutRemaining <= 0) return;
+    const interval = setInterval(() => {
+      setLockoutRemaining(prev => {
+        if (prev <= 1) {
+          try { sessionStorage.removeItem('kp_rider_lockout_until'); } catch {}
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lockoutRemaining]);
 
   // Portal tab state: 'active' | 'stats'
   const [tab, setTab] = useState('active');
@@ -71,17 +113,23 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
     return () => clearTimeout(t);
   }, [notice]);
 
-  // Handle Login
+  // Handle Login with brute force rate-limiting & instant memory wipe
   const handleLogin = async (e) => {
     if (e) e.preventDefault();
+    if (lockoutRemaining > 0) return;
     setLoginError('');
+
     const cleanPhone = phoneInput.replace(/\D/g, '');
+    const cleanPass = passwordInput.trim();
+    // Wipe password immediately from DOM and component state
+    setPasswordInput('');
+
     if (!cleanPhone) {
-      setLoginError('Please enter your phone number.');
+      setLoginError('Please enter your 10-digit phone number.');
       return;
     }
-    if (!passwordInput.trim()) {
-      setLoginError('Please enter your password.');
+    if (!cleanPass) {
+      setLoginError('Please enter your rider password.');
       return;
     }
 
@@ -89,22 +137,47 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
     try {
       const { data, error } = await supabase.rpc('rider_login', {
         p_phone: cleanPhone,
-        p_password: passwordInput.trim()
+        p_password: cleanPass
       });
 
       if (error) throw error;
       if (!data || !data.success) {
-        setLoginError(data?.message || 'Login failed. Please check credentials.');
+        let attempts = 0;
+        try {
+          attempts = Number(sessionStorage.getItem('kp_rider_failed_attempts') || 0) + 1;
+          sessionStorage.setItem('kp_rider_failed_attempts', String(attempts));
+        } catch {}
+
+        if (attempts >= MAX_FAILED_ATTEMPTS) {
+          const lockUntil = Date.now() + LOCKOUT_SECONDS * 1000;
+          try {
+            sessionStorage.setItem('kp_rider_lockout_until', String(lockUntil));
+            sessionStorage.removeItem('kp_rider_failed_attempts');
+          } catch {}
+          setLockoutRemaining(LOCKOUT_SECONDS);
+          setLoginError(`🔒 Security lockout: Too many failed attempts. Please wait 5 minutes before trying again.`);
+          return;
+        }
+
+        setLoginError('Invalid phone number or password. Please verify credentials with management.');
         return;
       }
 
-      const riderData = data.rider;
+      // Reset lockout on successful login
+      try {
+        sessionStorage.removeItem('kp_rider_failed_attempts');
+        sessionStorage.removeItem('kp_rider_lockout_until');
+      } catch {}
+
+      const riderData = {
+        ...data.rider,
+        session_created_at: Date.now()
+      };
       setRider(riderData);
       localStorage.setItem('kp_rider_session', JSON.stringify(riderData));
-      setPasswordInput('');
     } catch (err) {
-      console.error('Rider login error:', err);
-      setLoginError(err.message || 'Could not connect. Please try again.');
+      console.error('Rider login failed:', err);
+      setLoginError('Could not connect to server. Please check your internet connection.');
     } finally {
       setLoggingIn(false);
     }
@@ -432,6 +505,8 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
                 placeholder="e.g. 9800000000"
                 required
                 autoFocus
+                disabled={loggingIn || lockoutRemaining > 0}
+                autoComplete="tel"
               />
             </label>
 
@@ -439,16 +514,32 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
               <span>Rider Password</span>
               <input
                 type="password"
+                name="rider_pass"
                 value={passwordInput}
                 onChange={e => setPasswordInput(e.target.value)}
                 placeholder="Enter password given by admin"
                 required
+                disabled={loggingIn || lockoutRemaining > 0}
+                autoComplete="current-password"
+                spellCheck="false"
+                autoCorrect="off"
+                autoCapitalize="off"
               />
             </label>
 
-            <button type="submit" className="btn-primary rider-btn-full" disabled={loggingIn}>
+            <button
+              type="submit"
+              className="btn-primary rider-btn-full"
+              disabled={loggingIn || lockoutRemaining > 0}
+            >
               <Bike size={18} />
-              <span>{loggingIn ? 'Logging In…' : 'Log In to Delivery Shift'}</span>
+              <span>
+                {lockoutRemaining > 0
+                  ? `🔒 Locked (${lockoutRemaining}s)`
+                  : loggingIn
+                  ? 'Logging In…'
+                  : 'Log In to Delivery Shift'}
+              </span>
             </button>
           </form>
 

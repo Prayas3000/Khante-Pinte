@@ -2,7 +2,7 @@ import React from 'react';
 import { MapPin, Clock3, Phone, Instagram, Facebook } from 'lucide-react';
 import { formatTime12 } from '@/utils/formatters';
 
-export function Footer({ brandLogo, storeHours, onGoToRider }) {
+export function Footer({ brandLogo, storeHours }) {
   return (
     <footer id="contact" className="footer kp-footer">
       <div className="footer-brand">
@@ -31,7 +31,15 @@ export function Footer({ brandLogo, storeHours, onGoToRider }) {
       <div className="footer-column">
         <strong>VISIT & CONTACT</strong>
         <p>
-          <MapPin size={14} /> Buspark, Biratnagar, Nepal
+          <a
+            href="https://share.google/eDgzyz5jvFsLGEHHU"
+            target="_blank"
+            rel="noreferrer"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'inherit', textDecoration: 'underline' }}
+            title="Open Khante Pinte on Google Maps"
+          >
+            <MapPin size={14} /> Buspark, Biratnagar, Nepal ↗
+          </a>
         </p>
         <p>
           <Clock3 size={14} /> {formatTime12(storeHours.open_time)} – {formatTime12(storeHours.close_time)} (NPT)
@@ -87,25 +95,6 @@ export function Footer({ brandLogo, storeHours, onGoToRider }) {
           © {new Date().getFullYear()} Khante Pinte. All rights reserved.{' '}
           <span>Made for late-night cravings. ♥</span>
         </div>
-        {onGoToRider && (
-          <div style={{ marginTop: 8 }}>
-            <button
-              type="button"
-              onClick={onGoToRider}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--text-secondary, #94a3b8)',
-                fontSize: 12,
-                cursor: 'pointer',
-                textDecoration: 'underline',
-                padding: '4px 8px'
-              }}
-            >
-              🚴 Rider Portal
-            </button>
-          </div>
-        )}
       </div>
     </footer>
   );
