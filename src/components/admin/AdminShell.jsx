@@ -250,7 +250,7 @@ export function AdminShell({
                 {theme === 'dark' ? <Sun size={17} style={{ color: '#facc15' }} /> : <Moon size={17} />}
               </button>
             )}
-            <div className="admin-avatar">KP</div>
+            <div className="admin-avatar" title="Aayush Acharya (Owner)">AA</div>
             <button className="btn-outline admin-logout" onClick={onLogout}>
               Logout
             </button>

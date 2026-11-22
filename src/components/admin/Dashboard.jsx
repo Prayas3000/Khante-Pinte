@@ -44,6 +44,13 @@ export function OrderRow({ order: o }) {
 }
 
 export function Dashboard({ orders, stats, products, setSection }) {
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return 'Good morning';
+    if (hour >= 12 && hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
   const pending = orders.filter(o =>
     ['New', 'Confirmed', 'Preparing', 'Ready'].includes(o.status)
   );
@@ -53,7 +60,7 @@ export function Dashboard({ orders, stats, products, setSection }) {
     <>
       <div className="welcome-row">
         <div>
-          <h2>Good evening, Owner 👋</h2>
+          <h2>{getGreeting()}, Aayush Sir 👋</h2>
           <p>Here is your business snapshot for the current business day.</p>
         </div>
         <button className="btn-primary" onClick={() => setSection('POS')}>

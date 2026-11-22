@@ -291,7 +291,7 @@ export function RiderManager({ riders = [], setRiders, orders = [] }) {
       }
 
       const deductionAmount = -Math.abs(numAmount);
-      const debitNote = `CASH/BANK PAYOUT: ${payoutMethod} — ${payoutNotes.trim() || 'Paid out by restaurant owner'}`;
+      const debitNote = `CASH/BANK PAYOUT: ${payoutMethod} — ${payoutNotes.trim() || 'Paid out by Aayush Sir'}`;
 
       const { data: rpcData, error: rpcErr } = await supabase.rpc('admin_allocate_rider_money', {
         p_rider_id: payoutTarget.id,
@@ -355,7 +355,7 @@ export function RiderManager({ riders = [], setRiders, orders = [] }) {
         throw new Error('Incorrect Admin Website Password. Authorization rejected.');
       }
 
-      const creditNote = `${creditType.toUpperCase()} CREDIT: ${creditNotes.trim() || 'Allocated by owner'}`;
+      const creditNote = `${creditType.toUpperCase()} CREDIT: ${creditNotes.trim() || 'Allocated by Aayush Sir'}`;
 
       const { data: rpcData, error: rpcErr } = await supabase.rpc('admin_allocate_rider_money', {
         p_rider_id: creditTarget.id,
