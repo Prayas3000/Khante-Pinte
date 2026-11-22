@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Plus, 
   Bike, 
@@ -14,7 +15,10 @@ import {
   AlertTriangle,
   X,
   Trash2,
-  Edit2
+  Edit2,
+  Wallet,
+  ArrowDownCircle,
+  ArrowUpCircle
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { currency } from '@/utils/formatters';
@@ -39,15 +43,25 @@ export function RiderManager({ riders = [], setRiders, orders = [] }) {
   const [newRiderPw, setNewRiderPw] = useState('');
   const [savingPw, setSavingPw] = useState(false);
 
-  // Allocate money modal state (with Admin Password verification)
-  const [allocTarget, setAllocTarget] = useState(null);
-  const [allocAmount, setAllocAmount] = useState('');
-  const [allocType, setAllocType] = useState('salary'); // 'salary' | 'bonus' | 'commission' | 'deduction'
-  const [allocNotes, setAllocNotes] = useState('');
-  const [adminPasswordInput, setAdminPasswordInput] = useState('');
-  const [allocating, setAllocating] = useState(false);
-  const [allocError, setAllocError] = useState('');
-  const [allocSuccess, setAllocSuccess] = useState('');
+  // PAYOUT (Deduct from Balance) modal state
+  const [payoutTarget, setPayoutTarget] = useState(null);
+  const [payoutAmount, setPayoutAmount] = useState('');
+  const [payoutMethod, setPayoutMethod] = useState('Cash Handover at Counter');
+  const [payoutNotes, setPayoutNotes] = useState('');
+  const [payoutAdminPassword, setPayoutAdminPassword] = useState('');
+  const [payingOut, setPayingOut] = useState(false);
+  const [payoutError, setPayoutError] = useState('');
+  const [payoutSuccess, setPayoutSuccess] = useState('');
+
+  // Credit Money (Salary / Bonus) modal state
+  const [creditTarget, setCreditTarget] = useState(null);
+  const [creditAmount, setCreditAmount] = useState('');
+  const [creditType, setCreditType] = useState('salary'); // 'salary' | 'bonus'
+  const [creditNotes, setCreditNotes] = useState('');
+  const [creditAdminPassword, setCreditAdminPassword] = useState('');
+  const [crediting, setCrediting] = useState(false);
+  const [creditError, setCreditError] = useState('');
+  const [creditSuccess, setCreditSuccess] = useState('');
 
   // Delete rider modal state (with Admin Password verification)
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -78,7 +92,7 @@ export function RiderManager({ riders = [], setRiders, orders = [] }) {
       if (!error && data) {
         setRiderList(data);
         if (setRiders) {
-          setRiders(data.filter(r => r.active).map(r => r.name));
+          setRiders(data.filter(r => r.active));
         }
       }
     } catch (err) {
@@ -245,23 +259,23 @@ export function RiderManager({ riders = [], setRiders, orders = [] }) {
     }
   };
 
-  // Allocate Money with Security Password Gate
-  const handleAllocateMoney = async (e) => {
+  // PAYOUT CASH/BANK (Deduct from rider balance with Admin Password)
+  const handlePayoutSubmit = async (e) => {
     e.preventDefault();
-    setAllocError('');
-    setAllocSuccess('');
+    setPayoutError('');
+    setPayoutSuccess('');
 
-    const numAmount = parseFloat(allocAmount);
-    if (!numAmount || isNaN(numAmount) || numAmount === 0) {
-      setAllocError('Please enter a valid amount.');
+    const numAmount = parseFloat(payoutAmount);
+    if (!numAmount || isNaN(numAmount) || numAmount <= 0) {
+      setPayoutError('Please enter a valid payout amount.');
       return;
     }
-    if (!adminPasswordInput.trim()) {
-      setAllocError('Admin Website Password is required to authorize money allocation.');
+    if (!payoutAdminPassword.trim()) {
+      setPayoutError('Admin Website Password is required to authorize cash payout.');
       return;
     }
 
-    setAllocating(true);
+    setPayingOut(true);
     try {
       const { data: authData } = await supabase.auth.getUser();
       const adminEmail = authData?.user?.email;
@@ -269,44 +283,108 @@ export function RiderManager({ riders = [], setRiders, orders = [] }) {
 
       const { error: authErr } = await supabase.auth.signInWithPassword({
         email: adminEmail,
-        password: adminPasswordInput.trim()
+        password: payoutAdminPassword.trim()
       });
 
       if (authErr) {
         throw new Error('Incorrect Admin Website Password. Authorization rejected.');
       }
 
-      const signedAmount = allocType === 'deduction' ? -Math.abs(numAmount) : Math.abs(numAmount);
-      const notesLabel = allocNotes.trim() || `${allocType.toUpperCase()} allocation for ${allocTarget.name}`;
+      const deductionAmount = -Math.abs(numAmount);
+      const debitNote = `CASH/BANK PAYOUT: ${payoutMethod} — ${payoutNotes.trim() || 'Paid out by restaurant owner'}`;
 
       const { data: rpcData, error: rpcErr } = await supabase.rpc('admin_allocate_rider_money', {
-        p_rider_id: allocTarget.id,
-        p_amount: signedAmount,
-        p_type: allocType,
-        p_notes: notesLabel,
+        p_rider_id: payoutTarget.id,
+        p_amount: deductionAmount,
+        p_type: 'payout',
+        p_notes: debitNote,
         p_admin_email: adminEmail
       });
 
       if (rpcErr) throw rpcErr;
       if (!rpcData || !rpcData.success) {
-        throw new Error(rpcData?.message || 'Transaction could not be completed.');
+        throw new Error(rpcData?.message || 'Payout could not be processed.');
       }
 
-      setAllocSuccess(`Successfully allocated ${currency(Math.abs(signedAmount))} to ${allocTarget.name}! New Balance: ${currency(rpcData.new_balance)}`);
+      setPayoutSuccess(`Successfully settled and deducted ${currency(numAmount)} from ${payoutTarget.name}! Remaining Balance: ${currency(rpcData.new_balance)}`);
       await loadRiders();
 
       setTimeout(() => {
-        setAllocTarget(null);
-        setAllocAmount('');
-        setAllocNotes('');
-        setAdminPasswordInput('');
-        setAllocSuccess('');
+        setPayoutTarget(null);
+        setPayoutAmount('');
+        setPayoutNotes('');
+        setPayoutAdminPassword('');
+        setPayoutSuccess('');
       }, 1600);
     } catch (err) {
-      console.error('Allocate error:', err);
-      setAllocError(`Transaction failed: ${err.message}`);
+      console.error('Payout error:', err);
+      setPayoutError(`Payout failed: ${err.message}`);
     } finally {
-      setAllocating(false);
+      setPayingOut(false);
+    }
+  };
+
+  // Credit Money (Salary/Bonus to rider balance with Admin Password)
+  const handleCreditSubmit = async (e) => {
+    e.preventDefault();
+    setCreditError('');
+    setCreditSuccess('');
+
+    const numAmount = parseFloat(creditAmount);
+    if (!numAmount || isNaN(numAmount) || numAmount <= 0) {
+      setCreditError('Please enter a valid credit amount.');
+      return;
+    }
+    if (!creditAdminPassword.trim()) {
+      setCreditError('Admin Website Password is required to authorize money credit.');
+      return;
+    }
+
+    setCrediting(true);
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const adminEmail = authData?.user?.email;
+      if (!adminEmail) throw new Error('You must be signed in as admin.');
+
+      const { error: authErr } = await supabase.auth.signInWithPassword({
+        email: adminEmail,
+        password: creditAdminPassword.trim()
+      });
+
+      if (authErr) {
+        throw new Error('Incorrect Admin Website Password. Authorization rejected.');
+      }
+
+      const creditNote = `${creditType.toUpperCase()} CREDIT: ${creditNotes.trim() || 'Allocated by owner'}`;
+
+      const { data: rpcData, error: rpcErr } = await supabase.rpc('admin_allocate_rider_money', {
+        p_rider_id: creditTarget.id,
+        p_amount: Math.abs(numAmount),
+        p_type: creditType,
+        p_notes: creditNote,
+        p_admin_email: adminEmail
+      });
+
+      if (rpcErr) throw rpcErr;
+      if (!rpcData || !rpcData.success) {
+        throw new Error(rpcData?.message || 'Credit could not be processed.');
+      }
+
+      setCreditSuccess(`Successfully credited ${currency(numAmount)} to ${creditTarget.name}! New Balance: ${currency(rpcData.new_balance)}`);
+      await loadRiders();
+
+      setTimeout(() => {
+        setCreditTarget(null);
+        setCreditAmount('');
+        setCreditNotes('');
+        setCreditAdminPassword('');
+        setCreditSuccess('');
+      }, 1600);
+    } catch (err) {
+      console.error('Credit error:', err);
+      setCreditError(`Credit failed: ${err.message}`);
+    } finally {
+      setCrediting(false);
     }
   };
 
@@ -335,8 +413,8 @@ export function RiderManager({ riders = [], setRiders, orders = [] }) {
     <section className="panel rider-manager-panel">
       <div className="panel-head">
         <div>
-          <h3>Rider Management & Compensation Studio</h3>
-          <small>Manage riders, assign shifts, track commissions/salaries, and allocate payouts securely.</small>
+          <h3>Rider Fleet & Compensation Studio</h3>
+          <small>Manage riders, track duty status, view live deliveries, allocate salaries & settle payouts.</small>
         </div>
         <div>
           <button
@@ -459,13 +537,13 @@ export function RiderManager({ riders = [], setRiders, orders = [] }) {
                         </button>
                       </div>
                       <strong className="info-val">
-                        {r.pay_type === 'salary' ? '💼 Fixed Salary (No per-order comm.)' : `⚡ Commission (Rs. ${r.commission_per_order || 50}/order)`}
+                        {r.pay_type === 'salary' ? '💼 Fixed Salary' : `⚡ Commission (Rs. ${r.commission_per_order || 50}/order)`}
                       </strong>
                     </div>
 
                     <div className="rider-info-col">
-                      <span className="info-label">Account Balance</span>
-                      <strong className="info-val green-text">
+                      <span className="info-label">Unsettled Balance</span>
+                      <strong className={`info-val ${Number(r.balance || 0) > 0 ? 'green-text' : ''}`}>
                         {currency(r.balance || 0)}
                       </strong>
                     </div>
@@ -499,29 +577,51 @@ export function RiderManager({ riders = [], setRiders, orders = [] }) {
                     </div>
                   </div>
 
-                  {/* Action Buttons */}
+                  {/* Action Buttons Row */}
                   <div className="rider-card-actions">
+                    {/* PAYOUT BUTTON (Deduct balance when cash is handed over) */}
+                    <button
+                      type="button"
+                      className="btn-payout-cta"
+                      onClick={() => {
+                        setPayoutTarget(r);
+                        setPayoutAmount(Number(r.balance || 0) > 0 ? String(r.balance) : '');
+                        setPayoutMethod('Cash Handover at Counter');
+                        setPayoutNotes('');
+                        setPayoutAdminPassword('');
+                        setPayoutError('');
+                        setPayoutSuccess('');
+                      }}
+                      title="Record payout handed over to rider (deducts from balance)"
+                    >
+                      <ArrowDownCircle size={15} /> <span>Settle Payout</span>
+                    </button>
+
+                    {/* CREDIT SALARY / BONUS BUTTON */}
                     <button
                       type="button"
                       className="btn-primary-soft"
                       onClick={() => {
-                        setAllocTarget(r);
-                        setAllocAmount('');
-                        setAllocNotes('');
-                        setAdminPasswordInput('');
-                        setAllocError('');
-                        setAllocSuccess('');
+                        setCreditTarget(r);
+                        setCreditAmount('');
+                        setCreditType(r.pay_type === 'salary' ? 'salary' : 'bonus');
+                        setCreditNotes('');
+                        setCreditAdminPassword('');
+                        setCreditError('');
+                        setCreditSuccess('');
                       }}
+                      title="Credit fixed salary or bonus to rider balance"
                     >
-                      <DollarSign size={15} /> <span>Allocate Money / Pay</span>
+                      <ArrowUpCircle size={15} /> <span>Credit Money</span>
                     </button>
 
                     <button
                       type="button"
                       className="btn-outline"
                       onClick={() => openLedger(r)}
+                      title="View all earnings and payout debits"
                     >
-                      <FileText size={15} /> <span>Ledger</span>
+                      <FileText size={15} /> <span>Passbook</span>
                     </button>
 
                     <button
@@ -541,7 +641,7 @@ export function RiderManager({ riders = [], setRiders, orders = [] }) {
                         setDeleteAdminPassword('');
                         setDeleteError('');
                       }}
-                      title="Permanently Delete Rider"
+                      title="Permanently Delete Rider (Requires Password)"
                     >
                       <Trash2 size={15} />
                     </button>
@@ -553,76 +653,90 @@ export function RiderManager({ riders = [], setRiders, orders = [] }) {
         )}
       </div>
 
-      {/* MODAL 1: ALLOCATE MONEY / PAY SALARY (Requires Admin Password) */}
-      {allocTarget && (
-        <div className="modal-backdrop" onClick={() => setAllocTarget(null)}>
+      {/* MODAL 1: SETTLE PAYOUT / CASH HANDOVER (DEDUCTS BALANCE) */}
+      {payoutTarget && createPortal(
+        <div className="modal-backdrop" onClick={() => setPayoutTarget(null)}>
           <div className="modal-content alloc-modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
+            <div className="modal-header" style={{ borderBottomColor: '#fecaca' }}>
               <div>
-                <span className="eyebrow" style={{ color: 'var(--green-dark, #15803d)', fontWeight: 800 }}>RIDER COMPENSATION & PAYOUT</span>
-                <h3>Allocate Money: {allocTarget.name}</h3>
-                <small>Current Account Balance: <strong>{currency(allocTarget.balance || 0)}</strong></small>
+                <span className="eyebrow" style={{ color: '#dc2626', fontWeight: 800 }}>SETTLE PAYOUT / CASH HANDOVER</span>
+                <h3 style={{ margin: '2px 0' }}>Payout: {payoutTarget.name}</h3>
+                <small>Current Unsettled Balance: <strong>{currency(payoutTarget.balance || 0)}</strong></small>
               </div>
-              <button className="icon-btn modal-close-btn" onClick={() => setAllocTarget(null)}>
+              <button className="icon-btn modal-close-btn" onClick={() => setPayoutTarget(null)}>
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleAllocateMoney} className="alloc-form">
-              {allocError && (
+            <form onSubmit={handlePayoutSubmit} className="alloc-form">
+              {payoutError && (
                 <div className="alloc-alert error">
-                  <AlertTriangle size={16} /> <span>{allocError}</span>
+                  <AlertTriangle size={16} /> <span>{payoutError}</span>
                 </div>
               )}
-              {allocSuccess && (
+              {payoutSuccess && (
                 <div className="alloc-alert success">
-                  <Check size={16} /> <span>{allocSuccess}</span>
+                  <Check size={16} /> <span>{payoutSuccess}</span>
                 </div>
               )}
 
-              <div className="form-group">
-                <label>Transaction Type</label>
-                <select value={allocType} onChange={e => setAllocType(e.target.value)}>
-                  <option value="salary">Salary Credit (Add to Balance)</option>
-                  <option value="bonus">Bonus / Performance Incentive</option>
-                  <option value="commission">Commission Manual Adjustment</option>
-                  <option value="deduction">Cash Payout Handed Over (Deduct from Balance)</option>
-                </select>
-              </div>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary, #64748b)', lineHeight: 1.45 }}>
+                Record money you have paid to <strong>{payoutTarget.name}</strong>. This amount will be <strong>deducted</strong> from their balance and recorded in their statement as a debited payout.
+              </p>
 
               <div className="form-group">
-                <label>Amount (NPR)</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label>Payout Amount (NPR)</label>
+                  {Number(payoutTarget.balance || 0) > 0 && (
+                    <button
+                      type="button"
+                      className="btn-link-mini"
+                      onClick={() => setPayoutAmount(String(payoutTarget.balance))}
+                    >
+                      Pay Full Balance ({currency(payoutTarget.balance)})
+                    </button>
+                  )}
+                </div>
                 <input
                   type="number"
                   step="any"
-                  value={allocAmount}
-                  onChange={e => setAllocAmount(e.target.value)}
-                  placeholder="e.g. 2500"
+                  value={payoutAmount}
+                  onChange={e => setPayoutAmount(e.target.value)}
+                  placeholder="e.g. 2000"
                   required
                   autoFocus
                 />
               </div>
 
               <div className="form-group">
-                <label>Notes / Description</label>
+                <label>Payment Channel</label>
+                <select value={payoutMethod} onChange={e => setPayoutMethod(e.target.value)}>
+                  <option value="Cash Handover at Counter">💵 Cash Handover at Counter</option>
+                  <option value="Bank / eSewa Online Transfer">📱 Online Transfer (eSewa / Khalti / Bank)</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Remark / Note (Shown in Rider's Statement)</label>
                 <input
-                  value={allocNotes}
-                  onChange={e => setAllocNotes(e.target.value)}
-                  placeholder="e.g. Monthly salary payout / weekly bonus"
+                  value={payoutNotes}
+                  onChange={e => setPayoutNotes(e.target.value)}
+                  placeholder="e.g. Handed over cash at counter for week 47"
+                  required
                 />
               </div>
 
-              {/* SECURITY GATE: ADMIN WEBSITE PASSWORD */}
+              {/* SECURITY GATE: ADMIN PASSWORD */}
               <div className="admin-password-gate">
                 <div className="gate-title">
                   <Lock size={16} />
                   <strong>Security Verification: Enter Admin Password</strong>
                 </div>
-                <p>To protect restaurant funds, please enter your Admin Website Password to authorize this change.</p>
+                <p>To safeguard restaurant finances, please enter your Admin Website Password to authorize this payout deduction.</p>
                 <input
                   type="password"
-                  value={adminPasswordInput}
-                  onChange={e => setAdminPasswordInput(e.target.value)}
+                  value={payoutAdminPassword}
+                  onChange={e => setPayoutAdminPassword(e.target.value)}
                   placeholder="Your Admin Website Password"
                   required
                 />
@@ -632,27 +746,127 @@ export function RiderManager({ riders = [], setRiders, orders = [] }) {
                 <button
                   type="button"
                   className="btn-outline"
-                  onClick={() => setAllocTarget(null)}
-                  disabled={allocating}
+                  onClick={() => setPayoutTarget(null)}
+                  disabled={payingOut}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   className="btn-primary"
-                  disabled={allocating || !allocAmount}
+                  style={{ background: '#dc2626', color: '#fff' }}
+                  disabled={payingOut || !payoutAmount}
                 >
                   <ShieldCheck size={17} />
-                  <span>{allocating ? 'Verifying & Authorizing…' : 'Authorize & Allocate Money'}</span>
+                  <span>{payingOut ? 'Authorizing Payout…' : 'Authorize & Deduct Payout'}</span>
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* MODAL 2: CHANGE RIDER PASSWORD */}
-      {changePwTarget && (
+      {/* MODAL 2: CREDIT SALARY / BONUS (ADDS TO BALANCE) */}
+      {creditTarget && createPortal(
+        <div className="modal-backdrop" onClick={() => setCreditTarget(null)}>
+          <div className="modal-content alloc-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <span className="eyebrow" style={{ color: 'var(--green-dark, #15803d)', fontWeight: 800 }}>CREDIT SALARY OR BONUS</span>
+                <h3 style={{ margin: '2px 0' }}>Credit: {creditTarget.name}</h3>
+                <small>Current Account Balance: <strong>{currency(creditTarget.balance || 0)}</strong></small>
+              </div>
+              <button className="icon-btn modal-close-btn" onClick={() => setCreditTarget(null)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreditSubmit} className="alloc-form">
+              {creditError && (
+                <div className="alloc-alert error">
+                  <AlertTriangle size={16} /> <span>{creditError}</span>
+                </div>
+              )}
+              {creditSuccess && (
+                <div className="alloc-alert success">
+                  <Check size={16} /> <span>{creditSuccess}</span>
+                </div>
+              )}
+
+              <div className="form-group">
+                <label>Credit Type</label>
+                <select value={creditType} onChange={e => setCreditType(e.target.value)}>
+                  <option value="salary">Fixed Salary Credit</option>
+                  <option value="bonus">Bonus / Incentive</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Amount (NPR)</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={creditAmount}
+                  onChange={e => setCreditAmount(e.target.value)}
+                  placeholder="e.g. 5000"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Remark / Note (Shown in Rider's Statement)</label>
+                <input
+                  value={creditNotes}
+                  onChange={e => setCreditNotes(e.target.value)}
+                  placeholder="e.g. Monthly salary credit for November"
+                  required
+                />
+              </div>
+
+              {/* SECURITY GATE: ADMIN PASSWORD */}
+              <div className="admin-password-gate">
+                <div className="gate-title">
+                  <Lock size={16} />
+                  <strong>Security Verification: Enter Admin Password</strong>
+                </div>
+                <p>Please enter your Admin Website Password to authorize crediting money to this rider's account.</p>
+                <input
+                  type="password"
+                  value={creditAdminPassword}
+                  onChange={e => setCreditAdminPassword(e.target.value)}
+                  placeholder="Your Admin Website Password"
+                  required
+                />
+              </div>
+
+              <div className="alloc-modal-actions">
+                <button
+                  type="button"
+                  className="btn-outline"
+                  onClick={() => setCreditTarget(null)}
+                  disabled={crediting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={crediting || !creditAmount}
+                >
+                  <ShieldCheck size={17} />
+                  <span>{crediting ? 'Authorizing Credit…' : 'Authorize & Credit Money'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* MODAL 3: CHANGE RIDER PASSWORD */}
+      {changePwTarget && createPortal(
         <div className="modal-backdrop" onClick={() => setChangePwTarget(null)}>
           <div className="modal-content" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
@@ -687,11 +901,12 @@ export function RiderManager({ riders = [], setRiders, orders = [] }) {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* MODAL 3: EDIT COMPENSATION TYPE (Commission vs Salary) */}
-      {editPayTypeTarget && (
+      {/* MODAL 4: EDIT COMPENSATION MODEL (Commission vs Salary) */}
+      {editPayTypeTarget && createPortal(
         <div className="modal-backdrop" onClick={() => setEditPayTypeTarget(null)}>
           <div className="modal-content" style={{ maxWidth: 460 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
@@ -745,7 +960,7 @@ export function RiderManager({ riders = [], setRiders, orders = [] }) {
                   color: 'var(--text-secondary, #64748b)',
                   marginBottom: 16
                 }}>
-                  ℹ️ <strong>Fixed Salary Model:</strong> This rider will <u>not</u> receive automated commissions per delivered order. You can allocate their weekly/monthly salary anytime using the <strong>Allocate Money / Pay</strong> button.
+                  ℹ️ <strong>Fixed Salary Model:</strong> This rider will <u>not</u> receive automated commissions per delivered order. You can allocate their weekly/monthly salary anytime using the <strong>Credit Money</strong> button.
                 </div>
               )}
 
@@ -759,11 +974,12 @@ export function RiderManager({ riders = [], setRiders, orders = [] }) {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* MODAL 4: PERMANENTLY DELETE RIDER (Requires Admin Password) */}
-      {deleteTarget && (
+      {/* MODAL 5: PERMANENTLY DELETE RIDER (Requires Admin Password) */}
+      {deleteTarget && createPortal(
         <div className="modal-backdrop" onClick={() => setDeleteTarget(null)}>
           <div className="modal-content" style={{ maxWidth: 460 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header" style={{ borderBottomColor: '#fee2e2' }}>
@@ -839,16 +1055,17 @@ export function RiderManager({ riders = [], setRiders, orders = [] }) {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* MODAL 5: RIDER LEDGER HISTORY */}
-      {ledgerTarget && (
+      {/* MODAL 6: RIDER LEDGER HISTORY / PASSBOOK */}
+      {ledgerTarget && createPortal(
         <div className="modal-backdrop" onClick={() => setLedgerTarget(null)}>
-          <div className="modal-content" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
+          <div className="modal-content" style={{ maxWidth: 580 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div>
-                <h3>Payout & Compensation History</h3>
+                <h3>Compensation & Payout Passbook</h3>
                 <small>{ledgerTarget.name} · Current Balance: <strong>{currency(ledgerTarget.balance || 0)}</strong></small>
               </div>
               <button className="icon-btn modal-close-btn" onClick={() => setLedgerTarget(null)}>
@@ -856,47 +1073,64 @@ export function RiderManager({ riders = [], setRiders, orders = [] }) {
               </button>
             </div>
 
-            <div style={{ padding: '20px 24px', maxHeight: '60vh', overflowY: 'auto' }}>
+            <div style={{ padding: '20px 24px', maxHeight: '65vh', overflowY: 'auto' }}>
               {loadingLedger ? (
                 <p>Loading ledger records...</p>
               ) : ledgerList.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '30px 10px', color: 'var(--text-secondary, #64748b)' }}>
                   <FileText size={36} style={{ opacity: 0.35, marginBottom: 8 }} />
-                  <p>No payout or allocation records found for this rider.</p>
+                  <p>No payout or compensation transactions recorded yet.</p>
                 </div>
               ) : (
                 <div style={{ display: 'grid', gap: 10 }}>
-                  {ledgerList.map(record => (
-                    <div
-                      key={record.id}
-                      style={{
-                        padding: '12px 16px',
-                        borderRadius: 12,
-                        background: 'var(--bg-main, #f8fafc)',
-                        border: '1px solid var(--line, #e2e8f0)',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}
-                    >
-                      <div>
-                        <strong style={{ display: 'block', fontSize: 13, color: 'var(--text-primary, #0f172a)' }}>
-                          {record.notes}
-                        </strong>
-                        <small style={{ color: 'var(--text-secondary, #64748b)' }}>
-                          {new Date(record.created_at).toLocaleString()} {record.admin_email ? `· by ${record.admin_email}` : ''}
-                        </small>
+                  {ledgerList.map(record => {
+                    const isPositive = Number(record.amount) >= 0;
+                    return (
+                      <div
+                        key={record.id}
+                        style={{
+                          padding: '12px 16px',
+                          borderRadius: 12,
+                          background: 'var(--bg-main, #f8fafc)',
+                          border: '1px solid var(--line, #e2e8f0)',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <div>
+                          <strong style={{ display: 'block', fontSize: 13, color: 'var(--text-primary, #0f172a)' }}>
+                            {record.notes}
+                          </strong>
+                          <small style={{ color: 'var(--text-secondary, #64748b)' }}>
+                            {new Date(record.created_at).toLocaleString()} {record.admin_email ? `· by ${record.admin_email}` : ''}
+                          </small>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <strong style={{ display: 'block', fontSize: 15, color: isPositive ? '#16a34a' : '#dc2626' }}>
+                            {isPositive ? '+' : ''}{currency(record.amount)}
+                          </strong>
+                          <span style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            padding: '2px 6px',
+                            borderRadius: 4,
+                            textTransform: 'uppercase',
+                            background: isPositive ? '#dcfce7' : '#fee2e2',
+                            color: isPositive ? '#15803d' : '#b91c1c'
+                          }}>
+                            {isPositive ? 'CREDITED' : 'DEBITED PAYOUT'}
+                          </span>
+                        </div>
                       </div>
-                      <strong style={{ fontSize: 15, color: Number(record.amount) >= 0 ? '#16a34a' : '#dc2626' }}>
-                        {Number(record.amount) >= 0 ? '+' : ''}{currency(record.amount)}
-                      </strong>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </section>
   );

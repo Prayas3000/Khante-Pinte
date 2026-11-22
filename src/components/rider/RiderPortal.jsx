@@ -111,7 +111,19 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
   // Toggle On Duty / Off Duty
   const handleToggleDuty = async () => {
     if (!rider?.id || togglingDuty) return;
-    const nextDutyState = rider.is_on_duty === false ? true : false;
+    const isCurrentlyOn = rider.is_on_duty !== false;
+    const nextDutyState = !isCurrentlyOn;
+
+    // Strict rule: Rider can only go Off Duty once their assigned work is finished (delivered or cancelled)
+    if (isCurrentlyOn && activeOrders.length > 0) {
+      alert(
+        `⚠️ You cannot go Off Duty right now.\n\nYou have ${activeOrders.length} active delivery assigned to you (${activeOrders
+          .map(o => o.order_code || `KP-${o.order_number}`)
+          .join(', ')}).\n\nPlease complete and mark all assigned orders as Delivered before ending your duty shift.`
+      );
+      return;
+    }
+
     setTogglingDuty(true);
     try {
       const { data, error } = await supabase.rpc('rider_toggle_duty', {
@@ -232,6 +244,10 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
 
   // Update order status (Out for Delivery or Delivered)
   const updateStatus = async (orderId, newStatus) => {
+    if (rider.is_on_duty === false) {
+      alert('⚠️ You are currently OFF DUTY. Please toggle On Duty at the top before starting or updating deliveries.');
+      return;
+    }
     setUpdatingOrderId(orderId);
     try {
       // Optimistic update

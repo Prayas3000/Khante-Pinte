@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Printer, X, ChefHat, Receipt } from 'lucide-react';
 import { currency } from '@/utils/formatters';
 
@@ -13,7 +14,7 @@ export function ReceiptModal({ order: o, onClose }) {
 
   const displayOrderCode = o.orderCode || o.id;
 
-  return (
+  return createPortal(
     <div className="receipt-modal-backdrop" onClick={onClose}>
       <div className="receipt-modal-card" onClick={e => e.stopPropagation()}>
         {/* Modal Controls (Hidden in Print) */}
@@ -175,6 +176,7 @@ export function ReceiptModal({ order: o, onClose }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
