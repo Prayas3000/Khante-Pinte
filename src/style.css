@@ -2260,3 +2260,1022 @@
   border-color: #4a5937 !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45) !important;
 }
+
+/* ==========================================================================
+   Checkout 1-Tap Location Detector & Landmarks
+   ========================================================================== */
+.location-detector-card {
+  background: var(--bg-surface, #ffffff);
+  border: 1.5px dashed var(--line, #e2e8f0);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+[data-theme="dark"] .location-detector-card {
+  background: #181d13;
+  border-color: #2b3520;
+}
+
+.location-detector-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.location-detector-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.location-detector-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.location-detector-info strong {
+  display: block;
+  font-size: 14px;
+  color: var(--text-primary, #182230);
+}
+
+.location-detector-info small {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+}
+
+.btn-detect-gps {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-detect-gps:hover {
+  background: #0369a1;
+  transform: translateY(-1px);
+}
+
+.btn-detect-gps.pinned {
+  background: #16a34a;
+}
+
+.btn-detect-gps.pinned:hover {
+  background: #15803d;
+}
+
+.btn-detect-gps:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.location-pinned-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+}
+
+[data-theme="dark"] .location-pinned-status {
+  background: #122115;
+  border-color: #1e3a24;
+}
+
+.location-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #166534;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .location-status-badge {
+  color: #86efac;
+}
+
+.btn-clear-gps {
+  background: transparent;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 11px;
+  color: #64748b;
+  padding: 2px 8px;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.btn-clear-gps:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+.location-msg-success {
+  font-size: 12px;
+  color: #16a34a;
+  font-weight: 500;
+}
+
+.location-msg-error {
+  font-size: 12px;
+  color: #dc2626;
+  background: #fef2f2;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+[data-theme="dark"] .location-msg-error {
+  background: #2b1414;
+  color: #fca5a5;
+}
+
+.location-notice-box {
+  background: #fffbeb;
+  border: 1px solid #fef3c7;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #92400e;
+  line-height: 1.4;
+}
+
+[data-theme="dark"] .location-notice-box {
+  background: #231d10;
+  border-color: #3f3118;
+  color: #fde68a;
+}
+
+/* ==========================================================================
+   Rider Portal & Mobile Interface Styles
+   ========================================================================== */
+.rider-login-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: var(--bg-main, #f8fafc);
+}
+
+.rider-login-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 20px;
+  padding: 28px 24px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .rider-login-card {
+  background: #161a12;
+  border-color: #272f20;
+}
+
+.rider-login-brand {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.rider-brand-img {
+  max-height: 52px;
+  margin-bottom: 12px;
+}
+
+.rider-brand-badge {
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: #ffedd5;
+  color: #ea580c;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.rider-login-brand h2 {
+  font-size: 22px;
+  margin: 0 0 4px;
+  color: var(--text-primary, #0f172a);
+}
+
+.rider-login-brand p {
+  font-size: 13px;
+  color: var(--text-secondary, #64748b);
+  margin: 0;
+}
+
+.rider-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rider-login-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rider-login-form label span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #334155);
+}
+
+.rider-login-form input {
+  padding: 12px 14px;
+  border: 1.5px solid var(--line, #cbd5e1);
+  border-radius: 10px;
+  font-size: 15px;
+  background: var(--bg-surface, #ffffff);
+  color: var(--text-primary, #0f172a);
+  transition: border-color 0.2s;
+}
+
+.rider-login-form input:focus {
+  border-color: #ea580c;
+  outline: none;
+}
+
+.rider-btn-full {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 12px;
+  background: #ea580c;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.rider-btn-full:hover {
+  background: #c2410c;
+}
+
+.rider-login-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fef2f2;
+  border: 1px solid #fee2e2;
+  color: #b91c1c;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.rider-login-footer {
+  text-align: center;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line, #e2e8f0);
+}
+
+.rider-login-footer small {
+  display: block;
+  color: var(--text-secondary, #64748b);
+  margin-bottom: 8px;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: #ea580c;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* Authenticated Rider Portal Shell */
+.rider-portal-shell {
+  min-height: 100vh;
+  max-width: 600px;
+  margin: 0 auto;
+  background: var(--bg-main, #f8fafc);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+[data-theme="dark"] .rider-portal-shell {
+  background: #10140c;
+}
+
+.rider-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--bg-surface, #ffffff);
+  border-bottom: 1px solid var(--line, #e2e8f0);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+[data-theme="dark"] .rider-header {
+  background: #161a12;
+  border-color: #272f20;
+}
+
+.rider-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rider-avatar-bubble {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #ffedd5;
+  color: #ea580c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rider-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rider-name-row strong {
+  font-size: 15px;
+  color: var(--text-primary, #0f172a);
+}
+
+.rider-status-dot {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.rider-phone-tag {
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+}
+
+.rider-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rider-logout-btn:hover {
+  color: #dc2626;
+}
+
+/* Quick Stats Bar */
+.rider-quick-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--bg-surface, #ffffff);
+  border-bottom: 1px solid var(--line, #e2e8f0);
+}
+
+[data-theme="dark"] .rider-quick-stats {
+  background: #141810;
+  border-color: #242c1c;
+}
+
+.rider-quick-stat-item {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  background: var(--bg-main, #f1f5f9);
+  border-radius: 10px;
+  text-align: center;
+}
+
+[data-theme="dark"] .rider-quick-stat-item {
+  background: #1c2217;
+}
+
+.rider-quick-stat-item span {
+  font-size: 11px;
+  color: var(--text-secondary, #64748b);
+  font-weight: 500;
+}
+
+.rider-quick-stat-item strong {
+  font-size: 14px;
+  color: var(--text-primary, #0f172a);
+}
+
+.rider-quick-stat-item.highlight strong {
+  color: #16a34a;
+}
+
+/* Tab Navigation */
+.rider-tab-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 10px 16px;
+  gap: 8px;
+  background: var(--bg-surface, #ffffff);
+}
+
+[data-theme="dark"] .rider-tab-nav {
+  background: #161a12;
+}
+
+.rider-tab-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 10px;
+  border: 1px solid var(--line, #e2e8f0);
+  background: var(--bg-surface, #ffffff);
+  color: var(--text-secondary, #64748b);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+[data-theme="dark"] .rider-tab-btn {
+  background: #1c2217;
+  border-color: #2b3523;
+  color: #94a3b8;
+}
+
+.rider-tab-btn.active {
+  background: #ea580c;
+  color: #ffffff;
+  border-color: #ea580c;
+}
+
+/* Main Body & Delivery Cards */
+.rider-body {
+  padding: 16px;
+  flex: 1;
+}
+
+.rider-section-title {
+  margin-bottom: 14px;
+}
+
+.rider-section-title h3 {
+  margin: 0;
+  font-size: 17px;
+  color: var(--text-primary, #0f172a);
+}
+
+.rider-section-title small {
+  color: var(--text-secondary, #64748b);
+  font-size: 12px;
+}
+
+.rider-orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rider-order-card {
+  background: var(--bg-surface, #ffffff);
+  border: 1.5px solid var(--line, #e2e8f0);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+[data-theme="dark"] .rider-order-card {
+  background: #161a12;
+  border-color: #262f1e;
+}
+
+.rider-order-card.out-route {
+  border-color: #ea580c;
+  box-shadow: 0 4px 18px rgba(234, 88, 12, 0.15);
+}
+
+.rider-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line, #f1f5f9);
+  padding-bottom: 10px;
+}
+
+.rider-order-id {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-primary, #0f172a);
+  margin-right: 8px;
+}
+
+.rider-order-status {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.rider-order-status.out_for_delivery {
+  background: #ffedd5;
+  color: #ea580c;
+}
+
+.rider-card-time {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+}
+
+.rider-customer-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rider-customer-name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rider-customer-name strong {
+  font-size: 15px;
+  color: var(--text-primary, #0f172a);
+}
+
+.rider-phone-pill {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0284c7;
+}
+
+.rider-address-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.rider-pin-icon {
+  color: #ea580c;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.rider-address-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #1e293b);
+  margin: 0;
+  line-height: 1.35;
+}
+
+.rider-gps-pill {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 7px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 6px;
+}
+
+.rider-notes-bubble {
+  background: #f8fafc;
+  border-left: 3px solid #cbd5e1;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #475569;
+  border-radius: 0 6px 6px 0;
+}
+
+[data-theme="dark"] .rider-notes-bubble {
+  background: #1f251a;
+  border-left-color: #3f4e34;
+  color: #cbd5e1;
+}
+
+.rider-items-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.rider-item-chip {
+  padding: 3px 8px;
+  background: var(--bg-main, #f1f5f9);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text-primary, #334155);
+}
+
+[data-theme="dark"] .rider-item-chip {
+  background: #1c2217;
+  color: #e2e8f0;
+}
+
+/* COD vs Online Payment Banner */
+.rider-payment-banner {
+  padding: 10px 14px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rider-payment-banner.cod {
+  background: #fef2f2;
+  border: 1px solid #fee2e2;
+  color: #991b1b;
+}
+
+[data-theme="dark"] .rider-payment-banner.cod {
+  background: #2b1313;
+  border-color: #481d1d;
+  color: #fca5a5;
+}
+
+.rider-payment-banner.online {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+[data-theme="dark"] .rider-payment-banner.online {
+  background: #122115;
+  border-color: #1e3a24;
+  color: #86efac;
+}
+
+.pay-banner-text {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* Actions Grid (Maps & Phone) */
+.rider-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.rider-btn-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(2, 132, 199, 0.2);
+}
+
+.rider-btn-call {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #16a34a;
+  color: #ffffff;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(22, 163, 74, 0.2);
+}
+
+.rider-status-cta {
+  margin-top: 4px;
+}
+
+.rider-cta-out {
+  width: 100%;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 12px;
+  background: #ea580c;
+  color: #ffffff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.rider-cta-deliver {
+  width: 100%;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 12px;
+  background: #15803d;
+  color: #ffffff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(21, 128, 61, 0.25);
+}
+
+.rider-toast-notice {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0f172a;
+  color: #ffffff;
+  padding: 12px 20px;
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  z-index: 9999;
+}
+
+/* ==========================================================================
+   Admin Rider Manager & Security Password Gate
+   ========================================================================== */
+.rider-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.rider-admin-card {
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+[data-theme="dark"] .rider-admin-card {
+  background: #161a12;
+  border-color: #272f20;
+}
+
+.rider-admin-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.rider-admin-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rider-avatar-circle {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #ffedd5;
+  color: #ea580c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rider-admin-badge-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.rider-work-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 8px;
+}
+
+.rider-work-badge.free {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.rider-work-badge.busy {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.rider-status-pill {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.rider-status-pill.active {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.rider-status-pill.inactive {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.rider-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  background: var(--bg-main, #f8fafc);
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+
+[data-theme="dark"] .rider-info-grid {
+  background: #141810;
+}
+
+.rider-info-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.rider-info-col.password-col {
+  grid-column: span 2;
+  border-top: 1px dashed var(--line, #e2e8f0);
+  padding-top: 8px;
+  margin-top: 4px;
+}
+
+.info-label {
+  font-size: 11px;
+  color: var(--text-secondary, #64748b);
+}
+
+.info-val {
+  font-size: 13px;
+  color: var(--text-primary, #0f172a);
+}
+
+.info-val.green-text {
+  color: #16a34a;
+}
+
+.rider-pw-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 3px;
+}
+
+.pw-display {
+  font-family: monospace;
+  font-weight: 700;
+  font-size: 14px;
+  background: var(--bg-surface, #ffffff);
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--line, #cbd5e1);
+  color: var(--text-primary, #0f172a);
+}
+
+[data-theme="dark"] .pw-display {
+  background: #1e2418;
+  border-color: #34402a;
+}
+
+.icon-btn-mini {
+  background: transparent;
+  border: 1px solid var(--line, #cbd5e1);
+  border-radius: 6px;
+  padding: 4px 6px;
+  cursor: pointer;
+  color: var(--text-secondary, #64748b);
+  display: flex;
+  align-items: center;
+}
+
+.btn-link-mini {
+  background: none;
+  border: none;
+  color: #ea580c;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.rider-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-primary-soft {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #ffedd5;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary-soft:hover {
+  background: #ea580c;
+  color: #ffffff;
+}
+
+/* Security Verification Password Box */
+.admin-sec-gate-box {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  padding: 12px;
+  margin-top: 10px;
+}
+
+[data-theme="dark"] .admin-sec-gate-box {
+  background: #231c0e;
+  border-color: #423519;
+}
+
+.admin-sec-gate-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #b45309;
+  margin-bottom: 6px;
+}
+
+.admin-sec-gate-box input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1.5px solid #d97706;
+  border-radius: 8px;
+  font-size: 14px;
+}

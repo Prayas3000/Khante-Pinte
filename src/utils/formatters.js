@@ -86,6 +86,8 @@ export const formatDbOrder = row => ({
   customer: row.customer_name || 'Walk-in',
   phone: row.customer_phone || '',
   address: row.delivery_address || '',
+  deliveryLat: row.delivery_lat ? Number(row.delivery_lat) : null,
+  deliveryLng: row.delivery_lng ? Number(row.delivery_lng) : null,
   type: row.order_type === 'pickup' ? 'Pickup' : 'Delivery',
   items: (row.order_items || []).map(item => ({
     id: item.menu_item_id || item.id,

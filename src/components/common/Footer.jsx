@@ -2,7 +2,7 @@ import React from 'react';
 import { MapPin, Clock3, Phone, Instagram, Facebook } from 'lucide-react';
 import { formatTime12 } from '@/utils/formatters';
 
-export function Footer({ brandLogo, storeHours }) {
+export function Footer({ brandLogo, storeHours, onGoToRider }) {
   return (
     <footer id="contact" className="footer kp-footer">
       <div className="footer-brand">
@@ -83,8 +83,29 @@ export function Footer({ brandLogo, storeHours }) {
         <small>Follow us for updates, offers and delicious moments.</small>
       </div>
       <div className="footer-bottom">
-        © {new Date().getFullYear()} Khante Pinte. All rights reserved.{' '}
-        <span>Made for late-night cravings. ♥</span>
+        <div>
+          © {new Date().getFullYear()} Khante Pinte. All rights reserved.{' '}
+          <span>Made for late-night cravings. ♥</span>
+        </div>
+        {onGoToRider && (
+          <div style={{ marginTop: 8 }}>
+            <button
+              type="button"
+              onClick={onGoToRider}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-secondary, #94a3b8)',
+                fontSize: 12,
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                padding: '4px 8px'
+              }}
+            >
+              🚴 Rider Portal
+            </button>
+          </div>
+        )}
       </div>
     </footer>
   );

@@ -14,6 +14,7 @@ export function Header({
   setMenuOpen,
   theme = 'light',
   toggleTheme,
+  onGoToRider,
 }) {
   return (
     <>
@@ -283,6 +284,24 @@ export function Header({
                   {theme === 'dark' ? 'DARK ON' : 'LIGHT ON'}
                 </span>
               </button>
+
+              {onGoToRider && (
+                <button
+                  type="button"
+                  className="mobile-nav-link-btn"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onGoToRider();
+                  }}
+                >
+                  <span className="mobile-nav-icon">🚴</span>
+                  <div>
+                    <strong>Rider Delivery Portal</strong>
+                    <small>Rider login, active tasks & earnings</small>
+                  </div>
+                  <ChevronRight size={18} className="mobile-link-chevron" />
+                </button>
+              )}
             </div>
 
             {/* Social Links */}

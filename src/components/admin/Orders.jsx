@@ -47,6 +47,17 @@ export function Orders({
     return list.slice(start, start + pageSize);
   }, [list, page, pageSize]);
 
+  // Calculate active uncompleted deliveries per rider
+  const riderActiveCounts = useMemo(() => {
+    const counts = {};
+    (orders || []).forEach(o => {
+      if (o.rider && o.status !== 'Delivered' && o.status !== 'Cancelled') {
+        counts[o.rider] = (counts[o.rider] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [orders]);
+
   return (
     <>
       <div className="toolbar" style={{ flexWrap: 'wrap', gap: 10 }}>
@@ -115,6 +126,7 @@ export function Orders({
               changeStatus={changeStatus}
               assignRider={assignRider}
               riders={riders}
+              riderActiveCounts={riderActiveCounts}
               cancelOrder={cancelOrder}
               changePaymentStatus={changePaymentStatus}
             />

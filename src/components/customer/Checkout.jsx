@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ChevronRight, Bike, Store, Check } from 'lucide-react';
+import { X, ChevronRight, Bike, Store, Check, MapPin, Navigation, Crosshair } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { currency, sanitizePlainText } from '@/utils/formatters';
 
@@ -40,6 +40,46 @@ export function Checkout({
   const [recipientAddress, setRecipientAddress] = useState('');
   const [useAlternateContact, setUseAlternateContact] = useState(false);
   const [alternateContact, setAlternateContact] = useState('');
+
+  // Live Location Detection state
+  const [deliveryLat, setDeliveryLat] = useState(null);
+  const [deliveryLng, setDeliveryLng] = useState(null);
+  const [locating, setLocating] = useState(false);
+  const [locationSuccessMsg, setLocationSuccessMsg] = useState('');
+  const [locationError, setLocationError] = useState('');
+
+  const handleDetectLocation = () => {
+    setLocationError('');
+    setLocationSuccessMsg('');
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation is not supported by your browser.');
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setDeliveryLat(lat);
+        setDeliveryLng(lng);
+        setLocating(false);
+        setLocationSuccessMsg(`📍 Location pinned! Coordinates saved for rider navigation.`);
+      },
+      (err) => {
+        setLocating(false);
+        let msg = 'Could not detect your GPS location.';
+        if (err.code === 1) {
+          msg = 'Location permission was denied. Please allow location in your browser or write your landmark details below.';
+        } else if (err.code === 2) {
+          msg = 'GPS signal unavailable. Please write your street and landmark below.';
+        } else if (err.code === 3) {
+          msg = 'Location request timed out. Please try again or write your landmark below.';
+        }
+        setLocationError(msg);
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 10000 }
+    );
+  };
 
   useEffect(() => {
     let active = true;
@@ -125,8 +165,8 @@ export function Checkout({
       validationErrors.push('The alternate contact number must be exactly 10 digits.');
     }
     if (type === 'Delivery') {
-      if (!orderAddress) {
-        validationErrors.push('Please enter your delivery address.');
+      if (!orderAddress || orderAddress.trim().length < 3) {
+        validationErrors.push('Please enter your delivery street, house, and nearby landmark (compulsory for accurate delivery).');
       } else if (orderAddress.length > 100) {
         validationErrors.push('Delivery address cannot exceed 100 characters.');
       }
@@ -159,6 +199,8 @@ export function Checkout({
         name: isGift && account?.userId ? sanitizePlainText(name, 50) : orderName,
         phone: isGift && account?.userId ? phone : orderPhone,
         address: orderAddress,
+        deliveryLat: deliveryLat || null,
+        deliveryLng: deliveryLng || null,
         contactPhone: callbackPhone,
         gift: isGift,
         recipientName: isGift ? orderName : '',
@@ -448,8 +490,62 @@ export function Checkout({
 
           {type === 'Delivery' && (
             <div className="checkout-address-panel">
-              <label className="full-label">
-                {isGift ? 'Recipient’s delivery address' : 'Delivery address'}
+              {/* 1-Tap Current Location Detection */}
+              <div className="location-detector-card">
+                <div className="location-detector-top">
+                  <div className="location-detector-info">
+                    <span className="location-detector-icon">📍</span>
+                    <div>
+                      <strong>Add through your location</strong>
+                      <small>Rider gets direct 1-tap Google Maps navigation to your spot</small>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className={`btn-detect-gps ${locating ? 'loading' : ''} ${deliveryLat ? 'pinned' : ''}`}
+                    onClick={handleDetectLocation}
+                    disabled={locating}
+                  >
+                    <Crosshair size={15} className={locating ? 'spin' : ''} />
+                    <span>{locating ? 'Detecting GPS…' : deliveryLat ? 'Update Location' : 'Detect My Location'}</span>
+                  </button>
+                </div>
+
+                {deliveryLat && deliveryLng && (
+                  <div className="location-pinned-status">
+                    <span className="location-status-badge">
+                      <Check size={14} /> GPS Pinned ({deliveryLat.toFixed(5)}, {deliveryLng.toFixed(5)})
+                    </span>
+                    <button
+                      type="button"
+                      className="btn-clear-gps"
+                      onClick={() => {
+                        setDeliveryLat(null);
+                        setDeliveryLng(null);
+                        setLocationSuccessMsg('');
+                      }}
+                      title="Clear GPS pin"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
+
+                {locationSuccessMsg && !locationError && (
+                  <div className="location-msg-success">{locationSuccessMsg}</div>
+                )}
+
+                {locationError && (
+                  <div className="location-msg-error">{locationError}</div>
+                )}
+
+                <div className="location-notice-box">
+                  <strong>⚠️ Street & Landmark Required:</strong> Even when location is shared, please write your nearby landmark and building below so the rider easily locates your doorstep.
+                </div>
+              </div>
+
+              <label className="full-label" style={{ marginTop: 14 }}>
+                {isGift ? 'Recipient’s delivery address & landmark *' : 'Delivery address & landmark *'}
                 {isGift ? (
                   <>
                     <textarea
@@ -457,10 +553,10 @@ export function Checkout({
                       value={recipientAddress}
                       maxLength={100}
                       onChange={e => setRecipientAddress(e.target.value.slice(0, 100))}
-                      placeholder="Recipient’s area, street, house and nearby landmark…"
+                      placeholder="e.g. Near Traffic Chowk, Blue gate house opposite petrol pump…"
                     />
                     <small style={{ display: 'block', textAlign: 'right', color: '#667085', fontSize: 11, marginTop: 2 }}>
-                      {recipientAddress.length}/100 characters
+                      {recipientAddress.length}/100 characters (Compulsory landmark)
                     </small>
                   </>
                 ) : (
@@ -496,10 +592,10 @@ export function Checkout({
                             setAddress(e.target.value.slice(0, 100));
                             setSelectedAddressId('new');
                           }}
-                          placeholder="Area, street, landmark, house..."
+                          placeholder="e.g. Buspark road, near City Hospital, white house 2nd floor…"
                         />
                         <small style={{ display: 'block', textAlign: 'right', color: '#667085', fontSize: 11, marginTop: 2 }}>
-                          {address.length}/100 characters
+                          {address.length}/100 characters (Compulsory landmark)
                         </small>
                       </>
                     )}

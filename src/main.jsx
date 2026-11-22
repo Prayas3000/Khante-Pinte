@@ -48,6 +48,9 @@ import { StoreClosedModal } from '@/components/customer/StoreClosedModal';
 import { AdminLogin } from '@/components/admin/AdminLogin';
 import { AdminShell } from '@/components/admin/AdminShell';
 
+// Rider Portal
+import { RiderPortal } from '@/components/rider/RiderPortal';
+
 function App() {
   useEffect(() => {
     testConnection();
@@ -339,17 +342,25 @@ function App() {
   const knownOrderIdsRef = useRef(new Set());
   const initialLoadDoneRef = useRef(false);
 
-  const [view, setView] = useState(() =>
-    window.location.hostname.startsWith('admin.') ||
-    window.location.pathname.startsWith('/admin')
-      ? 'admin'
-      : 'customer'
-  );
+  const [view, setView] = useState(() => {
+    const host = window.location.hostname;
+    const path = window.location.pathname;
+    if (host.startsWith('rider.') || path.startsWith('/rider')) {
+      return 'rider';
+    }
+    if (host.startsWith('admin.') || path.startsWith('/admin')) {
+      return 'admin';
+    }
+    return 'customer';
+  });
 
   useEffect(() => {
     const isProdCustomer = ['khantepinte.com.np', 'www.khantepinte.com.np'].includes(window.location.hostname);
     if (isProdCustomer && window.location.pathname.startsWith('/admin')) {
       window.location.replace('https://admin.khantepinte.com.np/');
+    }
+    if (isProdCustomer && window.location.pathname.startsWith('/rider')) {
+      window.location.replace('https://rider.khantepinte.com.np/');
     }
   }, []);
 
@@ -614,7 +625,7 @@ function App() {
       const { data, error } = await supabase
         .from('orders')
         .select(
-          'id, order_number, order_code, customer_name, customer_phone, delivery_address, order_type, order_source, status, subtotal, discount, delivery_fee, total, notes, tracking_token, business_date, created_at, payment_method, payment_status, payment_proof_path, cancellation_reason, rider_id, order_items(id, menu_item_id, item_name, quantity, unit_price, line_total), order_status_history(id, status, changed_at), rider:riders(id,name,phone)'
+          'id, order_number, order_code, customer_name, customer_phone, delivery_address, delivery_lat, delivery_lng, order_type, order_source, status, subtotal, discount, delivery_fee, total, notes, tracking_token, business_date, created_at, payment_method, payment_status, payment_proof_path, cancellation_reason, rider_id, order_items(id, menu_item_id, item_name, quantity, unit_price, line_total), order_status_history(id, status, changed_at), rider:riders(id,name,phone)'
         )
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -896,6 +907,8 @@ function App() {
         p_customer_name: cleanCustomerName,
         p_customer_phone: form.phone.trim(),
         p_delivery_address: cleanAddress || null,
+        p_delivery_lat: form.deliveryLat || null,
+        p_delivery_lng: form.deliveryLng || null,
         p_order_type: form.type.toLowerCase(),
         p_items: cart.map(item => ({
           id: item.id,
@@ -934,6 +947,8 @@ function App() {
         customer: form.name,
         phone: form.phone,
         address: form.address,
+        deliveryLat: form.deliveryLat || null,
+        deliveryLng: form.deliveryLng || null,
         type: form.type,
         items: cart.map(item => ({ ...item })),
         subtotal: Number(data.subtotal),
@@ -1349,6 +1364,17 @@ function App() {
     );
   }
 
+  if (view === 'rider') {
+    return (
+      <RiderPortal
+        brandLogo={brandLogo}
+        theme={theme}
+        toggleTheme={toggleTheme}
+        onGoToCustomer={() => setView('customer')}
+      />
+    );
+  }
+
   if (view === 'admin' && adminChecking) {
     return <div className="login-page">Checking Admin access...</div>;
   }
@@ -1413,6 +1439,7 @@ function App() {
             setMenuOpen={setMenuOpen}
             theme={theme}
             toggleTheme={toggleTheme}
+            onGoToRider={() => setView('rider')}
           />
 
           {storeStatusLoaded && !storeOpen && (
@@ -1653,7 +1680,11 @@ function App() {
               <div className="about-icon">🌙</div>
             </section>
 
-            <Footer brandLogo={brandLogo} storeHours={storeHours} />
+            <Footer
+              brandLogo={brandLogo}
+              storeHours={storeHours}
+              onGoToRider={() => setView('rider')}
+            />
           </main>
 
           {/* Mobile Bottom Sticky Navigation Bar */}

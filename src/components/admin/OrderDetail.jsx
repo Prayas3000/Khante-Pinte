@@ -10,6 +10,7 @@ export function OrderDetail({
   changeStatus,
   assignRider,
   riders,
+  riderActiveCounts = {},
   cancelOrder,
   changePaymentStatus
 }) {
@@ -54,6 +55,26 @@ export function OrderDetail({
               <MapPin size={13} /> {o.address}
             </small>
           )}
+          {o.deliveryLat && o.deliveryLng && (
+            <div style={{ marginTop: 3 }}>
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${o.deliveryLat},${o.deliveryLng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: '#0284c7',
+                  textDecoration: 'underline'
+                }}
+              >
+                📍 Open Customer GPS in Google Maps
+              </a>
+            </div>
+          )}
           <small>{o.type}</small>
           {/CUSTOMER CALLBACK NUMBER:/i.test(o.note || '') && (
             <small>
@@ -70,11 +91,29 @@ export function OrderDetail({
               · {(o.note.match(/recipient phone: ([^;]+)/i) || [])[1] || ''}
             </small>
           )}
-          {o.rider && (
-            <small className="assigned-rider-admin">
-              🚴 Rider: {o.rider}
-              {o.riderPhone ? ` · ${o.riderPhone}` : ''}
-            </small>
+          {o.type === 'Delivery' && (
+            <div style={{ marginTop: 6 }}>
+              {o.rider ? (
+                <small className="assigned-rider-admin" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span>🚴 Rider: <strong>{o.rider}</strong>{o.riderPhone ? ` (${o.riderPhone})` : ''}</span>
+                  <span style={{
+                    padding: '2px 7px',
+                    borderRadius: 12,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    background: (riderActiveCounts[o.rider] || 0) > 2 ? '#fef3f2' : '#f0fdf4',
+                    color: (riderActiveCounts[o.rider] || 0) > 2 ? '#b42318' : '#166534',
+                    border: '1px solid currentColor'
+                  }}>
+                    {(riderActiveCounts[o.rider] || 0) === 1 ? '1 active delivery' : `${riderActiveCounts[o.rider] || 0} active deliveries`}
+                  </span>
+                </small>
+              ) : (
+                <small style={{ color: '#d97706', fontWeight: 600, display: 'inline-block' }}>
+                  ⚠️ No rider assigned
+                </small>
+              )}
+            </div>
           )}
         </div>
         <div className="items-mini">
@@ -140,11 +179,20 @@ export function OrderDetail({
           <select
             value={o.rider || ''}
             onChange={e => assignRider(o.id, e.target.value)}
+            style={{ fontWeight: o.rider ? '600' : 'normal', minWidth: 210 }}
           >
-            <option value="">Assign rider</option>
-            {riders.map(rider => (
-              <option key={rider}>{rider}</option>
-            ))}
+            <option value="">-- Assign Rider --</option>
+            {riders.map(rider => {
+              const rName = typeof rider === 'string' ? rider : rider.name;
+              const activeCount = riderActiveCounts[rName] || 0;
+              const isCurrent = o.rider === rName;
+              const statusText = activeCount === 0 ? '🟢 Available (0 active)' : `🟡 ${activeCount} active ${activeCount === 1 ? 'order' : 'orders'}`;
+              return (
+                <option key={rName} value={rName}>
+                  {isCurrent ? `✓ ${rName} • ${statusText} (Assigned)` : `${rName} • ${statusText}`}
+                </option>
+              );
+            })}
           </select>
         )}
         {o.status !== 'Cancelled' &&
