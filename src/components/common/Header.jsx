@@ -33,59 +33,50 @@ export function Header({
           ) : (
             <span className="brand-mark">KP</span>
           )}
-          <span>
-            <strong>KHANTE PINTE</strong>
-            <small>Late Night Food Delivery · Biratnagar</small>
+          <span className="brand-text-block">
+            <strong className="brand-name">Khante Pinte</strong>
+            <small className="brand-tagline">Biratnagar's Late Night Food Hub</small>
           </span>
         </a>
         <nav className="main-nav">
-          <a href="#top">Home</a>
-          <a href="#menu">Menu</a>
+          <a href="#top" className="nav-pill-home">Home</a>
+          <a href="#menu" className="nav-link-item">Menu</a>
           {onOpenOffers && (
             <button
               type="button"
-              className="nav-link-btn"
+              className="nav-link-item nav-link-btn"
               onClick={onOpenOffers}
-              style={{ background: 'none', border: 'none', font: 'inherit', cursor: 'pointer', padding: 0 }}
             >
               Offers
             </button>
           )}
           <button
             type="button"
-            className="nav-link-btn"
+            className="nav-link-item nav-link-btn"
             onClick={onOpenTracking}
-            style={{ background: 'none', border: 'none', font: 'inherit', cursor: 'pointer', padding: 0 }}
           >
             Track Order
           </button>
-          <a href="#about">About</a>
-          <div className="header-social-group">
-            <a
-              href="https://www.instagram.com/khantepinte.biratnagar?utm_source=ig_web_button_share_sheet&dmpr=ZDNlZDc0MzIxNw=="
-              target="_blank"
-              rel="noreferrer"
-              className="social-nav-btn insta"
-              aria-label="Instagram"
-              title="Follow Khante Pinte on Instagram"
-            >
-              <Instagram size={16} />
-            </a>
-            <a
-              href="https://www.facebook.com/KhantePinte.biratnagar/"
-              target="_blank"
-              rel="noreferrer"
-              className="social-nav-btn fb"
-              aria-label="Facebook"
-              title="Follow Khante Pinte on Facebook"
-            >
-              <Facebook size={16} />
-            </a>
-          </div>
+          <a href="#about" className="nav-link-item">About</a>
         </nav>
         <div className="header-actions">
+          <button
+            type="button"
+            className="icon-btn header-search-trigger"
+            onClick={handleSearchClick}
+            aria-label="Search Menu"
+            title="Search Menu"
+          >
+            <Search size={18} />
+          </button>
+
+          <button className="header-cart-btn" onClick={onOpenCart} aria-label={`View cart, ${cartCount} items`}>
+            <ShoppingBag size={19} />
+            {cartCount > 0 && <span className="header-cart-badge">{cartCount}</span>}
+          </button>
+
           {customerAccount ? (
-            <>
+            <div className="header-user-wrapper">
               <button className="customer-account-trigger" onClick={onOpenAccount} title="My Account & Orders">
                 <span className="customer-avatar-mini">
                   {customerAccount.avatarUrl ? (
@@ -104,29 +95,12 @@ export function Header({
                 </span>
                 <span className="account-chevron">⌄</span>
               </button>
-              <button className="btn-outline customer-logout desktop-only-btn" onClick={onLogoutCustomer}>
-                <LogIn size={16} /> Logout
-              </button>
-            </>
+            </div>
           ) : (
-            <button className="btn-outline header-login-btn" onClick={onOpenAuth} title="Customer Login / Sign Up">
+            <button className="header-login-pill" onClick={onOpenAuth} title="Customer Login / Sign Up">
               <LogIn size={16} /> <span>Login</span>
             </button>
           )}
-
-          <button className="btn-outline desktop-only-btn" onClick={onOpenTracking} title="Track your order">
-            Track order
-          </button>
-
-          <button
-            type="button"
-            className="icon-btn header-search-trigger"
-            onClick={handleSearchClick}
-            aria-label="Search Menu"
-            title="Search Menu"
-          >
-            <Search size={18} />
-          </button>
 
           {/* One-click Dark / Light Mode Toggle */}
           <button
@@ -137,15 +111,10 @@ export function Header({
             title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           >
             {theme === 'dark' ? (
-              <Sun size={19} className="theme-icon sun" />
+              <Sun size={18} className="theme-icon sun" />
             ) : (
-              <Moon size={19} className="theme-icon moon" />
+              <Moon size={18} className="theme-icon moon" />
             )}
-          </button>
-
-          <button className="cart-button" onClick={onOpenCart} aria-label={`View cart, ${cartCount} items`}>
-            <ShoppingBag size={18} /> <span>Cart</span>
-            <b>{cartCount}</b>
           </button>
 
           <button
