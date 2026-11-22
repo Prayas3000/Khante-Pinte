@@ -20,7 +20,10 @@ import {
   Shield,
   FileText,
   Check,
-  Power
+  Power,
+  ArrowDownLeft,
+  ArrowUpRight,
+  Wallet
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { currency, businessDate } from '@/utils/formatters';
@@ -168,16 +171,32 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
         setOrders(orderData);
       }
 
-      // 2. Fetch Payouts/Ledger for this rider
-      const { data: payoutData, error: payoutErr } = await supabase
-        .from('rider_payouts')
-        .select('*')
-        .eq('rider_id', rider.id)
-        .order('created_at', { ascending: false });
-
-      if (!payoutErr && payoutData) {
-        setPayouts(payoutData);
+      // 2. Fetch Payouts/Ledger for this rider (try secure RPC get_rider_statement first, fallback to table)
+      let payoutRecords = [];
+      try {
+        const { data: rpcPayouts, error: rpcErr } = await supabase.rpc('get_rider_statement', {
+          p_rider_id: rider.id
+        });
+        if (!rpcErr && Array.isArray(rpcPayouts)) {
+          payoutRecords = rpcPayouts;
+        } else {
+          const { data: tablePayouts } = await supabase
+            .from('rider_payouts')
+            .select('*')
+            .eq('rider_id', rider.id)
+            .order('created_at', { ascending: false });
+          if (tablePayouts) payoutRecords = tablePayouts;
+        }
+      } catch (pErr) {
+        console.warn('Error fetching rider payouts, trying direct query:', pErr);
+        const { data: fallbackPayouts } = await supabase
+          .from('rider_payouts')
+          .select('*')
+          .eq('rider_id', rider.id)
+          .order('created_at', { ascending: false });
+        if (fallbackPayouts) payoutRecords = fallbackPayouts;
       }
+      setPayouts(payoutRecords);
 
       // 3. Refresh rider balance & pay info
       const { data: freshRider } = await supabase
@@ -825,25 +844,69 @@ export function RiderPortal({ brandLogo, theme = 'light', toggleTheme, onGoToCus
               </div>
 
               {payouts.length === 0 ? (
-                <p className="rider-ledger-empty">No payout or compensation transactions recorded yet.</p>
+                <div style={{ textAlign: 'center', padding: '28px 12px', color: 'var(--text-secondary, #64748b)' }}>
+                  <FileText size={32} style={{ opacity: 0.35, marginBottom: 8 }} />
+                  <p style={{ margin: 0, fontSize: 13 }}>No payout or compensation transactions recorded yet.</p>
+                </div>
               ) : (
                 <div className="rider-ledger-list">
                   {payouts.map(p => {
                     const isPositive = Number(p.amount) >= 0;
+                    const typeLabel = 
+                      p.type === 'commission' ? 'Order Commission' :
+                      p.type === 'salary' ? 'Salary Credit' :
+                      p.type === 'bonus' ? 'Bonus / Incentive' :
+                      p.type === 'payout' ? 'Cash/Bank Payout' :
+                      String(p.type || 'transaction').toUpperCase();
+
                     return (
-                      <div className="rider-ledger-item" key={p.id}>
-                        <div className="ledger-item-left">
-                          <strong>{p.notes || String(p.type || 'payment').toUpperCase()}</strong>
-                          <small>
-                            {new Date(p.created_at).toLocaleDateString()} · {new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            {p.admin_email ? ` (by ${p.admin_email})` : ''}
+                      <div className={`rider-ledger-item ${isPositive ? 'credit' : 'debit'}`} key={p.id}>
+                        <div className="ledger-item-icon-wrap" style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 10,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          background: isPositive ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                          color: isPositive ? '#16a34a' : '#dc2626'
+                        }}>
+                          {isPositive ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
+                        </div>
+                        <div className="ledger-item-left" style={{ flex: 1, minWidth: 0, marginLeft: 10 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            <span style={{
+                              fontSize: 10,
+                              fontWeight: 700,
+                              padding: '2px 6px',
+                              borderRadius: 4,
+                              textTransform: 'uppercase',
+                              background: isPositive ? '#dcfce7' : '#fee2e2',
+                              color: isPositive ? '#15803d' : '#b91c1c'
+                            }}>
+                              {isPositive ? 'CREDITED' : 'DEBITED'}
+                            </span>
+                            <strong style={{ fontSize: 13 }}>
+                              {typeLabel}
+                            </strong>
+                          </div>
+                          <p style={{ margin: '3px 0 2px', fontSize: 13, color: 'inherit', opacity: 0.9 }}>
+                            {p.notes || 'No description provided'}
+                          </p>
+                          <small style={{ opacity: 0.65, fontSize: 11 }}>
+                            {new Date(p.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })} · {new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {p.admin_email ? ` · Auth by ${p.admin_email}` : ''}
                           </small>
                         </div>
-                        <div className="ledger-item-right">
-                          <span className={`ledger-amount ${isPositive ? 'plus' : 'minus'}`}>
+                        <div className="ledger-item-right" style={{ textAlign: 'right', flexShrink: 0, marginLeft: 8 }}>
+                          <span className={`ledger-amount ${isPositive ? 'plus' : 'minus'}`} style={{
+                            fontSize: 15,
+                            fontWeight: 800,
+                            color: isPositive ? '#16a34a' : '#dc2626'
+                          }}>
                             {isPositive ? '+' : ''}{currency(p.amount)}
                           </span>
-                          <span className="ledger-type-tag">{p.type}</span>
                         </div>
                       </div>
                     );
